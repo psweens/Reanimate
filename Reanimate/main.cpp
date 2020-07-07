@@ -32,14 +32,17 @@ int main(int argc, char** argv) {
     string root, loadroot;
 
     root = cwd;
+    cout<<root<<endl;
     root = "/home/sweene01/Documents/Reanimate/Build_Data/";
     loadroot = cwd;
     loadroot = "/home/sweene01/Documents/Reanimate/Load_Data/";
 
     Vasculature cortex;
+    cortex.root = root;
+    cortex.loadroot = loadroot;
     cortex.loadNetwork(loadroot + "Network.dat");
     cortex.pictureNetwork(root + "NetworkDiameters.ps",cortex.diam);
-    cortex.bloodFlow(true, true, true);
+    cortex.bloodFlow(true, false, true);
     cortex.pictureNetwork(root + "NetworkFlow.ps",cortex.qq, true);
     cortex.pictureNetwork(root + "NetworkPressure.ps",cortex.segpress);
     cortex.pictureNetwork(root + "NetworkShearStress.ps",cortex.tau, true);

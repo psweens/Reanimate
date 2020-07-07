@@ -36,4 +36,4 @@ add_executable(Reanimate_Update
         Reanimate/Vasculature.hpp
         Reanimate/Network_Flow.cpp
         Reanimate/Misc/misc_func.cpp
-)
+        Reanimate/Network_setupArrays.cpp Reanimate/Network_Print.cpp Reanimate/Tissue.cpp Reanimate/Tissue.hpp)

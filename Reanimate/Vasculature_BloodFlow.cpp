@@ -47,8 +47,8 @@ void Vasculature::bloodFlow(bool varviscosity, bool phaseseparation, bool memory
 }
 
 
-template <typename CallAnother>
-void Vasculature::splitHD(CallAnother solver) {
+template <typename Call>
+void Vasculature::splitHD(Call solver) {
 
     // Nonlinear iterations.  If convergence is slow, hematocrit is increasingly underrelaxed.
     // This eventually forces convergence even when system is unstable due to rheological

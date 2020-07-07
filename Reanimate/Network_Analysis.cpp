@@ -51,7 +51,7 @@ void Network::edgeNetwork() {
             }
 
             if (branches > 0 && cntr != 0)    {
-                for (int i = 0; i < feedNod.n_cols; i++)  {
+                for (int i = 0; i < (int) feedNod.n_cols; i++)  {
                     edgIdx = 0;
                     for (int iseg = 0; iseg < nseg; iseg++) {
                         if (ista(iseg) == feedNod(0,i) && flag(iseg) == 0 && nodtyp(feedNod(0,i)) == 2)   {
@@ -74,7 +74,7 @@ void Network::edgeNetwork() {
         }
     }
     ivec edgeIdx = unique(edgeLabels);
-    for (int iseg = 0; iseg < edgeIdx.n_elem; iseg++)  {
+    for (int iseg = 0; iseg < (int) edgeIdx.n_elem; iseg++)  {
         double d = mean(diam(find(edgeLabels == edgeIdx(iseg))));
         double l = mean(lseg(find(edgeLabels == edgeIdx(iseg))));
         for (int jseg = 0; jseg < nseg; jseg++) {

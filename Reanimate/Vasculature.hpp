@@ -27,8 +27,8 @@ namespace reanimate {
         void woMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec &flow);
         void wMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec &flow);
         void rheolParams();
-        template <typename CallAnother>
-        void splitHD(CallAnother solver);
+        template <typename Call>
+        void splitHD(Call solver);
         void iterateFlowDir();
 
     };

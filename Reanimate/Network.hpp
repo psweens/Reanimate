@@ -21,7 +21,7 @@ namespace reanimate {
 
     public:
 
-        string networkName,networkPath;
+        string networkName,networkPath,root,loadroot;
         bool unknownBCs;
         int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},nedge{};
         float alx{},aly{},alz{},lb{},maxl{};
@@ -39,6 +39,8 @@ namespace reanimate {
         void fullSolver();
         void estimationSolver();
         void putrank();
+        void printNetwork(const string& filename, bool resetDomain = true);
+        void printHistogram(const string &filename, mat &data, const field<string> &headers);
 
         // 'Getter' functions
         int getNseg();
