@@ -1,18 +1,26 @@
-//
-//  Network.cpp
-//  TEEPEE
-//
-//  Created by Paul Sweeney on 16/06/2020.
-//  Copyright © 2020 Paul Sweeney. All rights reserved.
-//
-
 #include "Network.hpp"
-#include "misc_func.h"
 
 #include <string>
+#include <dirent.h>
 
 using namespace std;
 using namespace reanimate;
+
+void Network::setBuildPath() {
+
+    printText("Setting build directory");
+    DIR* dir = opendir(buildPath.c_str());
+    if (dir) {
+        printText("Directory exits, removing contents",2,0);
+        string contents = buildPath + "*";
+        system(("rm " + contents).c_str());
+        closedir(dir);
+    } else if (ENOENT == errno) {
+        printText("Directory does not exist, creating folder",2,0);
+        system(("mkdir " + buildPath).c_str());
+    }
+
+}
 
 Network::Network() {
 
@@ -28,26 +36,30 @@ Network::Network() {
 
     unknownBCs=false;
 
+    rLog = "Reanimate_Log.txt";
+    initLog();
+
 }
 Network::~Network() = default;
 
 
-void Network::loadNetwork(const string& filepath)   {
+void Network::loadNetwork(const string &filename, const bool directFromAmira)   {
     
     int max=200;
     char bb[200];
 
-    networkPath = filepath;
+    if (!directFromAmira)   {networkPath = loadPath + filename;}
+    else {networkPath = buildPath + filename;}
 
     FILE *ifp;
-
-    cout<<"\nImporting network data..."<<endl;
-    ifp = fopen(filepath.c_str(),"r");
+    ifp = fopen(networkPath.c_str(),"r");
 
     fgets(bb,max,ifp);
-    printf("%s",bb);
-    
+    bb[strcspn(bb, "\n")] = 0;
     networkName = bb;
+
+    printText(networkName, 3);
+    printText("Importing network data");
     
     fscanf(ifp, "%f %f %f", &alx,&aly,&alz); fgets(bb,max,ifp);
     fscanf(ifp, "%i %i %i", &mxx,&myy,&mzz); fgets(bb,max,ifp);
@@ -84,10 +96,11 @@ void Network::loadNetwork(const string& filepath)   {
         }
     }
     else    {
-        printf("*** Error in Network File: Invalid Segment Format ***");
+        printText("Network File -> Invalid Segment Format",4);
     }
+    qq = abs(q);
 
-    
+
     // Number of nodes in vessel network
     fscanf(ifp,"%i", &nnod);
     fgets(bb,max,ifp);
@@ -110,14 +123,14 @@ void Network::loadNetwork(const string& filepath)   {
         }
     }
     else    {
-        printf("*** Error in Network File: Invalid Node Format ***");
+        printText("Network file -> Invalid Node Format",4);
     }
     
     // Boundary nodes
     fscanf(ifp,"%i", &nnodbc);
     fgets(bb,max,ifp);
     fgets(bb,max,ifp);
-    
+
     bcnodname = zeros<ivec>(nnodbc);
     bctyp = zeros<ivec>(nnodbc);
     bcprfl = zeros<vec>(nnodbc);
@@ -132,9 +145,9 @@ void Network::loadNetwork(const string& filepath)   {
         bcp = zeros<mat>(nnodbc,nsol);
     }
     else if (nsol > 4)  {
+        nsol -= 4; // Count extra solutes
+        bcp = zeros<mat>(nnodbc,nsol);
         for(int inodbc = 0; inodbc < nnodbc; inodbc++){
-            nsol -= 4; // Count extra solutes (exc. PO2)
-            bcp = zeros<mat>(nnodbc,nsol);
             fscanf(ifp,"%lli %lli %lf %lf", &bcnodname(inodbc),&bctyp(inodbc),&bcprfl(inodbc),&bchd(inodbc));
             for (int i = 0; i < nsol; i++)  {
                 fscanf(ifp," %lf",&bcp(inodbc,i));
@@ -143,7 +156,7 @@ void Network::loadNetwork(const string& filepath)   {
         }
     }
     else    {
-        printf("*** Error in Network File: Invalid Boundary Node Format ***");
+        printText("Network file -> Invalid Boundary Node Format",4);
     }
     
     fclose(ifp);
@@ -152,7 +165,8 @@ void Network::loadNetwork(const string& filepath)   {
 
     setup_networkArrays();
     analyse_network();
-    printNetwork(root + "checkNetwork.txt");
+    edgeNetwork();
+    printNetwork("loadedNetworkFile.txt");
 
     field<string> headers(2,1);
     headers(0,0) = "Diameter";
@@ -160,15 +174,23 @@ void Network::loadNetwork(const string& filepath)   {
     mat data = zeros<mat>(nseg,2);
     data.col(0) = diam;
     data.col(1) = lseg;
-    printHistogram(root + "DiamLength_HistogramData.txt", data, headers);
+    printHistogram(buildPath + "DiamLength_HistogramData.txt", data, headers);
 
 }
 
-void Network::analyse_network()   {
+void Network::analyse_network(bool graph)   {
 
-    printf("No. of segments = %i\n",nseg);
-    printf("No. of nodes = %i\n",nnod);
-    printf("No. of boundary nodes = %i\n",nnodbc);
+    if (graph)  {
+        printNum("No. of edges =", nseg);
+        printNum("No. of vertices =", nnod);
+        printNum("No. of leaf vertices =", nnodbc);
+    }
+    else {
+        printNum("No. of segments =", nseg);
+        printNum("No. of nodes =", nnod);
+        printNum("No. of boundary nodes =", nnodbc);
+    }
+
 
     for (int iseg = 0; iseg < nseg; iseg++)	{
         //Search for nodes corresponding to this segment
@@ -185,7 +207,7 @@ void Network::analyse_network()   {
                     }
                 }
             }
-            printf("*** Error: No matching node found for segname %lli\n", segname(iseg));
+            printText( "No matching node found for segname " + to_string(segname(iseg)),4);
             foundit:;
         }
     }
@@ -200,12 +222,11 @@ void Network::analyse_network()   {
         nodtyp(inod1) += 1;
         nodtyp(inod2) += 1;
         if (nodtyp(inod1) > nodsegm) {
-            printf("*** Error: Too many segments connected to node %i\n", inod1);
+            printText( "Too many segments connected to node " + to_string(inod1),4);
         }
         if (nodtyp(inod2) > nodsegm) {
-            printf("*** Error: Too many segments connected to node %i\n", inod2);
+            printText( "Too many segments connected to node " + to_string(inod2),4);
         }
-        // "-1" due to indexing starting at zero
         nodseg(nodtyp(inod1) - 1,inod1) = iseg;
         nodseg(nodtyp(inod2) - 1,inod2) = iseg;
         nodnod(nodtyp(inod1) - 1,inod1) = inod2;
@@ -218,12 +239,12 @@ void Network::analyse_network()   {
             if(nodname(inod) == bcnodname(inodbc))  {
                 bcnod(inodbc) = inod;
                 if(nodtyp(inod) != 1)   {
-                    printf("*** Error: Boundary node %lli is not a 1-segment node\n", nodname(inod));
+                    printText( "Boundary node " + to_string(nodname(inod)) + " is not a 1-segment node",4);
                 }
                 goto foundit2;
             }
         }
-        printf("*** Error: No matching node found for nodname %lli, inodbc %i\n", bcnodname(inodbc),inodbc);
+        printText("No matching node found for nodname " + to_string(bcnodname(inodbc)) + " , " + to_string(inodbc), 4);
         foundit2:;
     }
 
@@ -267,9 +288,9 @@ void Network::analyse_network()   {
 
 }
 
-void Network::subNetwork(ivec &index) {
-    
-    cout<<"Creating subnetwork..."<<endl;
+void Network::subNetwork(ivec &index, bool graph) {
+
+    printText("Creating subnetwork");
     for (int iseg = 0; iseg < nseg; iseg++) {
         if (index(iseg) == 1)   {
             segname.shed_row(iseg);
@@ -302,7 +323,7 @@ void Network::subNetwork(ivec &index) {
                     }
                 }
             }
-            printf("*** Error: No matching node found for segname %lli\n", segname(iseg));
+            printText( "No matching node found for segname " + to_string(segname(iseg)),4);
         foundit:;
         }
     }
@@ -316,10 +337,10 @@ void Network::subNetwork(ivec &index) {
         nodtyp(inod1) += 1;
         nodtyp(inod2) += 1;
         if(nodtyp(inod1) > nodsegm) {
-            printf("*** Error: Too many segments connected to node %i\n", inod1);
+            printText( "Too many segments connected to node " + to_string(inod1),4);
         }
         if(nodtyp(inod2) > nodsegm) {
-            printf("*** Error: Too many segments connected to node %i\n", inod2);
+            printText( "Too many segments connected to node " + to_string(inod2),4);
         }
     }
     
@@ -368,8 +389,8 @@ void Network::subNetwork(ivec &index) {
             jnodbc += 1;
         }
     }
-    
-    printf("Subnetwork: No. of segments = %i\n",nseg);
-    printf("Subnetwork: No. of nodes = %i\n",nnod);
-    printf("Subnetwork: No. of boundary nodes = %i\n",nnodbc);
+
+    (*this).setup_networkArrays();
+    (*this).analyse_network(graph);
+
 }

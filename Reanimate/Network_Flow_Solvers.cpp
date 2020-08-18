@@ -1,7 +1,3 @@
-//
-// Created by sweene01 on 20/06/2020.
-//
-
 #include "Network.hpp"
 
 using namespace reanimate;
@@ -9,34 +5,43 @@ using namespace reanimate;
 void Network::fullSolver()    {
 
     // Construct conductance matrix, M
+    if (!phaseseparation)   {printText("Computing conductance matrix, M",2, 0);}
     double tcond{};
     for (int iseg = 0; iseg < nseg; iseg++) {
-        tcond = conductance(iseg);
+        if (deadends(iseg) == 1)    {tcond = 1.0;}
+        else {tcond = conductance(iseg);}
+        //tcond = conductance(iseg);
         M(iseg,ista(iseg)) = tcond;
         M(iseg,iend(iseg)) = -tcond;
     }
 
     // Construct K matrix
+    if (!phaseseparation)   {printText("Computing K matrix",2, 0);}
     K = L * M;
 
     // Define qo - pressure and flow boundary conditions
+    if (!phaseseparation)   {printText("Assigning boundary conditions",2, 0);}
+    int idx{};
     for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+        idx = bcnod(inodbc);
         if (bctyp(inodbc) == 0)  {
-            Qo(bcnod(inodbc)) = bcprfl(inodbc)*alpha;
-            K.row(bcnod(inodbc)).zeros();
-            K(bcnod(inodbc),bcnod(inodbc)) = 1.;
+            Qo(idx) = bcprfl(inodbc)*alpha;
+            K.row(idx).zeros();
+            K(idx,idx) = 1.;
         }
         else    {
-            Qo(bcnod(inodbc)) = -bcprfl(inodbc)*gamma;
+            Qo(idx) = -bcprfl(inodbc)*gamma;
         }
     }
 
-    /*superlu_opts opts;
+    superlu_opts settings;
+    if (phaseseparation)    {
+        //settings.allow_ugly = true;
+        settings.equilibrate = true;
+        settings.refine = settings.REF_EXTRA;
+    }
 
-    opts.allow_ugly  = true;
-    opts.equilibrate = true;
-    opts.refine = superlu_opts::REF_EXTRA;*/
-
+    if (!phaseseparation)   {printText("Solving linear system",2, 0);}
     nodpress = spsolve(K,Qo)/alpha;
     q = (M * nodpress)*(alpha/gamma);
 
@@ -48,7 +53,9 @@ void Network::estimationSolver() {
     // Construct conductance, M
     double tcond{};
     for (int iseg = 0; iseg < nseg; iseg++) {
-        tcond = conductance(iseg);
+        if (deadends(iseg) == 1)    {tcond = 1.0;}
+        else {tcond = conductance(iseg);}
+        //tcond = conductance(iseg);
         M(iseg,ista(iseg)) = tcond;
         M(iseg,iend(iseg)) = -tcond;
     }
@@ -69,8 +76,6 @@ void Network::estimationSolver() {
             cntr += 1;
         }
     }
-
-
 
     // Constructing H matrix - replacing with matrix A for reduced run-time
     if (nseg < 1e3) {

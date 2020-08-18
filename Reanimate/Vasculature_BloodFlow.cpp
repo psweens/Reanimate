@@ -1,12 +1,5 @@
-//
-//  Network_BloodFlow.cpp
-//  TEEPEE
-//
-//  Created by Paul Sweeney on 20/06/2020.
-//  Copyright © 2020 Paul Sweeney. All rights reserved.
-//
-
 #include "Vasculature.hpp"
+#include "spatGraph.hpp"
 
 using namespace reanimate;
 
@@ -16,27 +9,31 @@ void Vasculature::bloodFlow(bool varviscosity, bool phaseseparation, bool memory
     Vasculature::phaseseparation = phaseseparation;
     Vasculature::memoryeffects = memoryeffects;
 
-    cout<<"\n\nSimulating blood flow ..."<<endl;
+    printText("Blood Flow Module", 3);
 
-    // If Hd splitting w/ mem. -> compute edge lengths (microns)
-    if (memoryeffects && phaseseparation && nedge == 0)    {edgeNetwork();}
+    // Detect unknown boundary conditions
+    if (any(bctyp == 3))    {unknownBCs = true;}
+    setup_flowArrays();
+
+    // If Hd splitting w/ mem. -> computer edge / vertex network to reduce runtime
+    if (phaseseparation)    {findDeadends();}
 
     // Millimetre scaling
     diam *= 1e-3;
     lseg *= 1e-3;
     rseg *= 1e-3;
-    
-    // Detect unknown boundary conditions
-    if (any(bctyp == 3))    {unknownBCs = true;}
 
-    setup_flowArrays();
     rheolParams();
+    printText("Simulating blood flow");
     if (unknownBCs)    {
-        cout<<"Unknown boundary conditions detected -> Running flow estimation ..."<<endl;
+        printText("Unknown boundary conditions detected -> Running flow estimation",2, 0);
         setup_estimationArrays();
         iterateFlowDir();
     }
-    else {splitHD(&Network::fullSolver);}
+    else {
+        printText("Full boundary conditions detected -> Running full solver",2, 0);
+        splitHD(&Network::fullSolver);
+    }
 
 
     // Micron scaling
@@ -61,9 +58,12 @@ void Vasculature::splitHD(Call solver) {
     if (!phaseseparation)   {
         nitmax = 1;
     }
+
+    ivec noflowOld = zeros<ivec>(nseg);
+    if (phaseseparation)    {printText("Applying phase separations laws",2, 0);}
     for (int iter = 1; iter <= nitmax; iter++)  {
 
-        printf("%i/%i: ",iter, nitmax);
+        if(phaseseparation) {printText(to_string(iter)+"/"+to_string(nitmax),1);}
 
         if (iter % 5 == 0)  {
             relax *= 0.8;
@@ -78,7 +78,7 @@ void Vasculature::splitHD(Call solver) {
             if (varviscosity) {
                 visc = viscor((tdiam)*1e3,hd(iseg))*xi;
                 if (isnan(visc))    {
-                    printf("*** Viscosity error at segment %lli, h'crit = %f ***\n",segname(iseg),hd(iseg));
+                    printText( "Viscosity at segment "+to_string(segname(iseg))+", h'crit = "+to_string(hd(iseg)),4);
                 }
             }
             else {
@@ -91,22 +91,43 @@ void Vasculature::splitHD(Call solver) {
 
         // Flow solver
         (this->*solver)();
-
+        /*cout<<q.n_elem<<endl;
+        cout<<nseg<<endl;
+        uvec idx;
+        for (int iseg = 0; iseg < nseg; iseg++) {
+            cout<<"sGs:"<<subGraphs(iseg)<<endl;
+            cout<<max(subGraphs)<<"\t"<<min(subGraphs)<<endl;
+            cout<<deadends(iseg)<<endl;
+            cout<<subGraphs(iseg)<<endl;
+            if (deadends(iseg) == -3)   {
+                idx = find(subGraphs = subGraphs(iseg));
+                cout<<idx.n_elem<<endl;
+                if (idx.n_elem > 0) {
+                    cout << q(idx) << endl;
+                    cout << "next!" << endl;
+                }
+                else {cout << "whoops!" << endl;}
+            }
+        }
+        cout<<"hi"<<endl;*/
 
         // Calculate segment hematocrits
         if (phaseseparation){
-            if (unknownBCs) {
-                //zeroflow(find(q == 0.0)).fill(1);
-                //q(find(q == 0.0)).fill(1e-12);
-            } // Odd behaviour otherwise (between estimation/phase separation)
-            putrank();
-            dishem(memoryeffects);
+            // Odd behaviour otherwise (between estimation/phase separation)
+            //hd(find(noflow == 1)).fill(0.0);
+            bool flowSwitch = checkNoflow(noflowOld);
+            spatGraph hdGraph;
+            if (iter == 1 || flowSwitch)  {
+                hdGraph.generate(*this, true);
+            }
+            putrank(hdGraph);
+            dishem(memoryeffects, hdGraph);
+            if (any(hd > 1.0))  {
+                printText( "Unphysiological haematocrit detected",5);
+                hd(find(hd > 1.0)).fill(consthd);
+                hd(find(deadends == 1)).fill(0.);
+            }
         }
-
-
-        // Assuming zero flow --> no Hd .. or at least zero --> RBCs not passing through lumen
-        //hd(find(abs(q) <= 1e-9)).fill(0.0);
-        //hd(find(hd > 1.0)).fill(consthd);
 
 
         // Compare hd and q with previous values
@@ -119,25 +140,21 @@ void Vasculature::splitHD(Call solver) {
         maxqerr = abs(qchange).max(errsegq);
         maxhderr = abs(hdchange).max(errseghd);
         if (phaseseparation) {
-            printf("Flow error = %f, h'crit error = %f\n", iter, maxqerr, maxhderr);
+            printText( "Flow error = "+to_string(maxqerr)+" at segment "+to_string(segname(errsegq))+", h'crit error = "+to_string(maxhderr)+" at segment "+to_string(segname(errseghd)),1,0);
         }
         if(maxqerr < qtol && maxhderr < hdtol)  {
             goto converged;
         }
 
     }
-    errsegq = (int) errsegq;
-    errseghd = (int) errseghd;
 
-    if (phaseseparation)   {
-        printf("*** WARNING: Non-linear iteration not converged ***\n");
-        printf("Flow error = %f at segment %lli, Hd error = %f at segment %lli\n",maxqerr,segname(errsegq),maxhderr,segname(errseghd));
-    }
+    if (phaseseparation)   {printText("Non-linear iteration not converged",5);}
     converged:;
+    if (phaseseparation) {printText("Iterative h'crit solver converged");}
 
 
-    q(find(zeroflow == 1)).fill(0.0);
     // Calculate absolute flow, shear stress and segment pressure
+    q(find(noflow == 1)).fill(0.0);
     qq = abs(q);
     if (!unknownBCs)    {
         for (int iseg = 0; iseg < nseg; iseg++) {
@@ -155,8 +172,11 @@ void Vasculature::splitHD(Call solver) {
 
 
 
-    int nzeroflow = accu(zeroflow);
-    if (nzeroflow > 0) {printf("*** WARNING: Zero flow detected in %i segments ***\n",nzeroflow);}
+    int nnoflow = accu(noflow);
+    if (nnoflow > 0) {
+        printText("No flow detected in "+to_string(nnoflow)+" segments",5);
+        if (phaseseparation) {hd(find(noflow == 1)).fill(0.0);}
+    }
 }
 
 void Vasculature::iterateFlowDir()   {
@@ -174,8 +194,7 @@ void Vasculature::iterateFlowDir()   {
 
         // Count flow reversal
         int nflowreversal = (int) accu(abs(flowsign(find(flowsign != oldFlowsign))));
-        cout <<"Total reversed flow = "<<nflowreversal<<",\t"<<"ktau/kp = "<<ktau/kp<<",\t"<<"Tissue perfusion = "<<tissperfusion<<" ml/min/100g\n"<<endl;
-
+        printText( "Total reversed flow = "+to_string(nflowreversal)+", ktau/kp = "+to_string(ktau/kp)+", tissue perfusionr = "+to_string(tissperfusion)+" ml/min/100g",1,0);
 
         // Condition for final flow solution
         if (ktau / kp > 1 && nflowreversal == 0 && nodpress.min() > 0.) {
@@ -190,7 +209,7 @@ void Vasculature::iterateFlowDir()   {
             nodpress = oldNodpress / alpha;
             hd = oldHd;
 
-            cout<<"Final ktau/kp = "<<ktau/kp<<"\tMean wall shear stress = "<<mean(tau)<<" dyn/cm2"<<endl;
+            printText("Final ktau/kp = "+to_string(ktau/kp)+", mean wall shear stress = "+to_string(mean(tau))+" dyn/cm2",1);
 
             for (int iseg = 0; iseg < nseg; iseg++) {
                 segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;
@@ -216,5 +235,52 @@ void Vasculature::iterateFlowDir()   {
         }
 
     }
+
+}
+
+bool Vasculature::checkNoflow(ivec &noflowOld) {
+
+    noflow(find(q == 0.0)).fill(1);
+    noflow(find(deadends == 1)).fill(1);
+
+    bool flowSwitch = false;
+    ivec tag = zeros<ivec>(nseg); // Preventing 'noflow' assignment to edge already accessed
+    for (int iseg = 0; iseg < getNseg(); iseg++)    {
+        if (noflow(iseg) == 1 && tag(iseg) == 0) {
+            uvec idx = find(edgeLabels == edgeLabels(iseg));
+            noflow(idx).fill(1);
+            tag(idx).fill(1);
+        }
+    }
+
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        if (noflow(iseg) != noflowOld(iseg))    {
+            flowSwitch = true;
+            iseg = nseg;
+            printText("Flow switching detected in "+to_string(accu(noflow))+" segments ("+to_string(accu(noflowOld))+" in prior iteration)",5,0);
+        }
+    }
+    noflowOld = noflow;
+
+    return flowSwitch;
+
+}
+
+void Vasculature::findDeadends()    {
+
+    graph.generate(*this);
+    graph.findBridgeheads();
+    for (int iseg = 0; iseg < nseg; iseg++)    {
+        for (int jseg = 0; jseg < graph.getNseg(); jseg++)  {
+            if (edgeLabels(iseg) == graph.segname(jseg))    {
+                //deadends(iseg) = graph.subGraphs(jseg);
+                subGraphs(iseg) = graph.subGraphs(jseg);
+                if (subGraphs(iseg) < 0)    {
+                    deadends(iseg) = 1;
+                }
+            }
+        }
+    }
+    hd(find(deadends == 1)).fill(0.);
 
 }

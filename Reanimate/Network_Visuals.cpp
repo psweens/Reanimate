@@ -19,7 +19,7 @@ void Network::pictureNetwork(const string &filename, vec vector, bool logdist, i
 
     double picfac = 500./fmax(xmax,ymax);
 
-    ofp = fopen(filename.c_str(), "w");
+    ofp = fopen((buildPath + filename).c_str(), "w");
     fprintf(ofp, "%%!PS\n");
     fprintf(ofp, "%%%%Pages: 3\n");
     fprintf(ofp, "/mx {%g mul 50 add} def\n",picfac);

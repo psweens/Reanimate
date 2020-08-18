@@ -1,14 +1,3 @@
-//
-//  main.cpp
-//  Vascular Flows 2.0
-//
-//  Flow and Pressure Solver in Discrete Vascular Networks making use of the Armadillo
-//  C++ library for stability and speed of simulations (requires BLAS, LAPACK and SuperLU).
-//
-//  Created by Paul Sweeney on 06/05/2015.
-//  Copyright (c) 2015 Paul Sweeney - University College London. All rights reserved.
-//
-
 #include "Network.hpp"
 #include "spatGraph.hpp"
 #include "Vasculature.hpp"
@@ -18,41 +7,43 @@ using namespace std;
 
 int main(int argc, char** argv) {
 
-    char cwd[PATH_MAX];
-    if (getcwd(cwd, sizeof(cwd)) != nullptr)   {
-        printf("Current working dir: %s\n", cwd);
+    // Directory setup
+    Vasculature vessNetwork;
+    vessNetwork.buildPath = "/home/sweene01/Documents/Reanimate/Build_Data/";
+    vessNetwork.loadPath = "/home/sweene01/Documents/Reanimate/Load_Data/";
+    vessNetwork.setBuildPath(); // Create build directory / delete contents
+
+    // Read & process amira binary file
+    vessNetwork.lthresh = 10; // Default value in microns (can delete line if using 10um)
+    // Below creates network file ('networkname.txt') & new Amira file based on above threshold ('reducedAmira.am')
+    vessNetwork.readAmira("LS3.am","LS3_Colorectal_Carcinoma");
+    // To load network file straight away, change "LS3Network.txt" to "newNetwork.txt" -> need to assign BCs after loading
+
+    // Load network file
+    vessNetwork.loadNetwork("LS3_Colorectal_Carcinoma.txt",true);
+
+    // Solving for blood flow
+    // Following is an example of assigning pressure boundary conditions
+    for (int inodbc = 0; inodbc < vessNetwork.getNnodbc(); inodbc++)    {
+        vessNetwork.bcprfl(inodbc) = 90.;
+        vessNetwork.bctyp(inodbc) = 0;
     }
-    else {
-        perror("getcwd() error");
-        return 1;
-    }
+    vessNetwork.bloodFlow(true, true);
+    vessNetwork.pictureNetwork("NetworkDiameters.ps", vessNetwork.diam);
+    vessNetwork.pictureNetwork("NetworkFlow.ps", vessNetwork.qq, true);
+    vessNetwork.pictureNetwork("NetworkPressure.ps", vessNetwork.segpress);
+    vessNetwork.pictureNetwork("NetworkShearStress.ps", vessNetwork.tau, true);
+    vessNetwork.pictureNetwork("NetworkHD.ps", vessNetwork.hd);
+    vessNetwork.printNetwork("solvedNetwork.txt");
+    mat extraData = zeros<mat>(vessNetwork.getNseg(), 1);
+    extraData.col(0) = vessNetwork.hd;
+    vessNetwork.printAmira("amiraHD.am", extraData);
 
-    //gpu_test();
-
-    string root, loadroot;
-
-    root = cwd;
-    cout<<root<<endl;
-    root = "/home/sweene01/Documents/Reanimate/Build_Data/";
-    loadroot = cwd;
-    loadroot = "/home/sweene01/Documents/Reanimate/Load_Data/";
-
-    Vasculature cortex;
-    cortex.root = root;
-    cortex.loadroot = loadroot;
-    cortex.loadNetwork(loadroot + "Network.dat");
-    cortex.pictureNetwork(root + "NetworkDiameters.ps",cortex.diam);
-    cortex.bloodFlow(true, false, true);
-    cortex.pictureNetwork(root + "NetworkFlow.ps",cortex.qq, true);
-    cortex.pictureNetwork(root + "NetworkPressure.ps",cortex.segpress);
-    cortex.pictureNetwork(root + "NetworkShearStress.ps",cortex.tau, true);
-    cortex.pictureNetwork(root + "NetworkHD.ps",cortex.hd);
-    cortex.edgeNetwork();
-
-    spatGraph eCortex;
-    eCortex.generate(cortex);
-    eCortex.pictureNetwork(root + "eNetworkDiameters.ps",eCortex.diam);
-    eCortex.loadTrunks(loadroot + "NetworkClass.txt");
-    eCortex.pictureNetwork(root + "eNetworkGeometry.ps",conv_to<vec>::from(eCortex.geometry));
+    // Vessel classification analysis
+    //spatGraph eCortex;
+    //eCortex.generate(vessNetwork, true);
+    //eCortex.pictureNetwork(buildPath + "eNetworkDiameters.ps",eCortex.diam);
+    //eCortex.loadTrunks(loadPath + "NetworkClass.txt");
+    //eCortex.pictureNetwork(buildPath + "eNetworkGeometry.ps",conv_to<vec>::from(eCortex.geometry));*/
 
 }

@@ -15,19 +15,27 @@ namespace reanimate {
 
         int nTrees{},narterioles,nvenules;
         double Dr{},Dmin{};
-        ivec geometry;
+        ivec geometry,isBridge,isBridgehead,visited;
         imat InOutlets;
-        void generate(Network &network);
+        //template <class CallNetwork>
+        void generate(Network network, bool setNoflow=false);
         void defineTrunk();
         void loadTrunks(const string &filepath);
         void analyseTopology(imat predefinedInput=NULL);
+        void dfsBasic(int v, int tag);
+        void dfsBridge(int v, int p = -1);
+        void findBridges();
+        void findBridgeheads();
+        void traverseGraph();
 
         spatGraph();
         ~spatGraph();
 
     private:
 
-        ivec Pa,Rs,feedNod,dFeedNod,drainNod,flagTree,daughter,Rn;
+        int timer{};
+        ivec Pa,Rs,feedNod,dFeedNod,drainNod,flagTree,daughter,Rn,tin,low;
+        imat segnod;
 
         void setup_graphArrays();
         void classifyNetwork(imat &InOutlets, ivec &geometry);

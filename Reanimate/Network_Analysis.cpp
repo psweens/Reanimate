@@ -4,91 +4,75 @@ using namespace reanimate;
 
 void Network::edgeNetwork() {
 
-    cout<<"Calculating edge / vertex network ... "<<endl;
+    printText( "Analysing network edges");
 
     int order = 1;
-    int edgIdx = 0;
-    vec ledge = zeros<vec>(nseg);
+    int edgIdx = 1;//0;
     ivec flag = zeros<ivec>(nseg);
     edgeLabels = zeros<ivec>(nseg);
-    edgeLabels.fill(-1);
     elseg = zeros<vec>(nseg);
     ediam = zeros<vec>(nseg);
 
-    for (int inod = 0; inod < nnod; inod++) {
-        if (nodtyp(inod) != 2)   {
+    uvec bnod = find(nodtyp == 1 || nodtyp > 2); // Find index of boundary or bifurcating nodes
+    for (int inod = 0; inod < bnod.n_elem; inod++)  {   // Cycle through nodtyp != 2
 
-            int cntr = 0;
-            int branches = (int) nodtyp(inod);
-            imat feedNod = zeros<imat>(2,branches);
-            //flag.zeros();
-            for (int iseg = 0; iseg < nseg; iseg++) {
-                if (cntr == branches)   {
-                    iseg = nseg;
-                }
-                else if (flag(iseg) == 0)    {
-                    if (ista(iseg) == inod)  {
-                        flag(iseg) = 1;
-                        feedNod(0,cntr) = iend(iseg);
-                        feedNod(1,cntr) = order;
-                        edgeLabels(iseg) = feedNod(1, cntr);
-                        order += 1;
-                        cntr += 1;
-                    }
-                    else if (iend(iseg) == inod)    {
-                        flag(iseg) = 1;
-                        feedNod(0,cntr) = ista(iseg);
-                        feedNod(1,cntr) = order;
-                        edgeLabels(iseg) = feedNod(1, cntr);
-                        order += 1;
-                        cntr += 1;
-                    }
-                }
-                else if (flag(iseg) != 0 && (ista(iseg) == inod || iend(iseg) == inod)) {
-                    feedNod.shed_col(cntr);
-                    branches -= 1;
-                }
-            }
+        for (int jnod = 0; jnod < nodtyp(bnod(inod)); jnod++) { // Cycle through segments at each node
 
-            if (branches > 0 && cntr != 0)    {
-                for (int i = 0; i < (int) feedNod.n_cols; i++)  {
-                    edgIdx = 0;
-                    for (int iseg = 0; iseg < nseg; iseg++) {
-                        if (ista(iseg) == feedNod(0,i) && flag(iseg) == 0 && nodtyp(feedNod(0,i)) == 2)   {
-                            edgeLabels(iseg) = feedNod(1, i);
-                            flag(iseg) = 2;
-                            feedNod(0,i) = iend(iseg);
-                            iseg = 0;
-                        }
-                        else if (iend(iseg) == feedNod(0,i) && flag(iseg) == 0 && nodtyp(feedNod(0,i)) == 2)   {
-                            edgeLabels(iseg) = feedNod(1, i);
-                            flag(iseg) = 2;
-                            feedNod(0,i) = ista(iseg);
-                            iseg = 0;
-                        }
-                    }
-                    edgIdx += 1;
+            int nod1 = bnod(inod); // Start node
+            int nod2 = nodnod(jnod,nod1); // End Node
+            int seg = nodseg(jnod,nod1); // Current segment
+            if (flag(seg) == 0)  { // If segment has not been processed -> proceed
+
+                // Initialise first segment
+                flag(seg) = 1;
+                edgeLabels(seg) = edgIdx;
+                nod1 = nod2; // End node becomes start node of next segment
+
+                while (nodtyp(nod1) == 2)   {
+
+                    uvec next = find(flag == 0 && (ista == nod1 || iend == nod1)); // Find next node
+                    if (next.n_elem > 1)    {printText( "More than one edge segment detected",4);}
+
+                    // Tag & update indices
+                    seg = next(0);
+                    if (nod1 == ista(seg))  {nod2 = iend(seg);}
+                    else {nod2 = ista(seg);}
+                    flag(seg) = 1;
+                    edgeLabels(seg) = edgIdx;
+                    nod1 = nod2;
+
                 }
+                edgIdx += 1;
             }
 
         }
+
     }
+    for (int i = 0; i < edgeLabels.n_elem; i++) {
+        if (edgeLabels(i) == 0) {
+            printText( "Segment(s) not assigned an edge",4);
+            i = edgeLabels.n_elem;
+        }
+    }
+
     ivec edgeIdx = unique(edgeLabels);
     for (int iseg = 0; iseg < (int) edgeIdx.n_elem; iseg++)  {
-        double d = mean(diam(find(edgeLabels == edgeIdx(iseg))));
-        double l = mean(lseg(find(edgeLabels == edgeIdx(iseg))));
-        for (int jseg = 0; jseg < nseg; jseg++) {
-            if (edgeIdx(iseg) == edgeLabels(jseg))    {
-                ediam(jseg) = d;
-                elseg(jseg) = l;
-            }
-        }
+        uvec segs = find(edgeLabels == edgeIdx(iseg));
+        vec test = diam(segs);
+        double d = mean(diam(segs));
+        double l = sum(lseg(segs));
+        ediam(segs).fill(d);
+        elseg(segs).fill(l);
     }
-
-    cout << "\tEdge lengths: " << mean(elseg) << " pm " << stddev(elseg) << endl;
-    cout << "\tEdge diams: " << mean(ediam) << " pm " << stddev(ediam) << endl;
-    cout << "\tLength / diam ratio: " << mean(elseg / ediam) << " pm " << stddev(elseg / ediam) << endl;
+    nedge = edgeIdx.n_elem;
+    uvec newIdx = find_unique(edgeLabels);
+    printNum("No. of edges =", nedge);
+    printStat("Edge lengths =", elseg(newIdx), "um");
+    printStat("Edge diameters =", ediam(newIdx), "um");
+    printStat("Length / diameter ratio =", elseg(newIdx)/ediam(newIdx), "um");
 
     nedge = elseg.n_rows;
+
+
 
 }

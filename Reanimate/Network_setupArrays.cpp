@@ -24,11 +24,13 @@ void Network::setup_flowArrays()    {
     c = zeros<vec>(nseg);
     conductance = zeros<vec>(nseg);
     segpress = zeros<vec>(nseg);
+    deadends = zeros<ivec>(nseg);
+    subGraphs = zeros<ivec>(nseg);
     BCflow = zeros<vec>(nnodbc);
     BCpress = zeros<vec>(nnodbc);
     Qo = zeros<vec>(nnod);
 
-    zeroflow = zeros<ivec>(nseg);
+    noflow = zeros<ivec>(nseg);
 
     M = zeros<sp_mat>(nseg,nnod);
     L = zeros<sp_mat>(nnod,nseg);
@@ -68,7 +70,7 @@ void Network::setup_estimationArrays()  {
         }
     }
     nunknown = (int) accu(unknownnod);
-    cout<<"Total unknown conditions = "<<nunknown<<" ("<<100*(float(nunknown)/float(nnodbc))<<"%)"<<endl;
+    printText("Total unknown conditions = "+to_string(nunknown)+" ("+to_string(100*(float(nunknown)/float(nnodbc)))+"%)");
     nIBnod = nnod - nunknown; // No. of internal and known boundary nodes
     estimationarraysize = nnod + nIBnod;
 
@@ -103,12 +105,12 @@ void Network::setup_estimationArrays()  {
 
     // Assign target pressure
     targPress = 31.;//mean(bcprfl(find(bctyp == 0))); // Set target pressure as the mean of the assign boundary pressure conditions
-    cout<<"Target Pressure = "<<targPress<<" mmHg"<<endl;
+    printNum("Target Pressure = ",targPress,"mmHg");
     p0.fill(targPress * alpha);
 
     // Target shear stress - intially set with random directions unless network flow is known
     targStress = 15.;
-    cout<<"Target Wall Shear Stress = "<<targStress<<" dyn/cm2"<<endl;
+    printNum("Target Wall Shear Stress = ",targStress,"dyn/cm2");
     targStress *= beta;
     int ran{};
     srand((u_int) time(0));
@@ -122,7 +124,7 @@ void Network::setup_estimationArrays()  {
     if (accu(q) > 0.0)  {
         tau0 = abs(tau0);
         tau0 %= sign(q);
-        cout<<"Wall shear stress initialised using network file flow direction ..."<<endl;
+        printText("Wall shear stress initialised using network file flow direction",2,0);
     }
 
 

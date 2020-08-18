@@ -17,10 +17,17 @@ void Network::printNetwork(const string& filename, bool resetDomain)    {
         miny = min(cnode.row(1));
         minz = min(cnode.row(2));
 
+        cnode.row(0) -= minx;
+        cnode.row(1) -= miny;
+        cnode.row(2) -= minz;
+        alx -= minx;
+        aly -= miny;
+        alz -= minz;
+
     }
 
 
-    ofp = fopen(filename.c_str(),"w");
+    ofp = fopen((buildPath + filename).c_str(),"w");
     fprintf(ofp,"%s",networkName.c_str());
     fprintf(ofp,"%f %f %f  Box dimensions in microns \n",alx-minx,aly-miny,alz-minz);
     fprintf(ofp,"%i %i %i  No. of tissue points in x,y,z directions \n",mxx,myy,mzz);
