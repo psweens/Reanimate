@@ -14,13 +14,14 @@ spatGraph::~spatGraph() = default;
 
 void spatGraph::setup_graphArrays() {
 
-    q = zeros<vec>(nseg);
+    //q = zeros<vec>(nseg);
     rseg = zeros<vec>(nseg);
-    vesstyp = zeros<ivec>(nseg);
+    //vesstyp = zeros<ivec>(nseg);
     ista = zeros<ivec>(nseg);
     iend = zeros<ivec>(nseg);
     geometry = zeros<ivec>(nseg);
     isBridge = zeros<ivec>(nseg);
+    isBridgehead = zeros<ivec>(nseg);
     subGraphs = zeros<ivec>(nseg);
 
     nodout = zeros<ivec>(nnod);
@@ -28,84 +29,42 @@ void spatGraph::setup_graphArrays() {
     nk = zeros<ivec>(nnod);
     nodpress = zeros<vec>(nnod);
     nodtyp = zeros<ivec>(nnod);
+    articPnt = zeros<ivec>(nnod);
 
     bcnod = zeros<ivec>(nnodbc);
 
     nodnod = zeros<imat>(nodsegm,nnod);
     nodseg = zeros<imat>(nodsegm,nnod);
-    segnod = zeros<imat>(nnod,nnod);
+
+    segnod = zeros<sp_mat>(nnod,nnod);
 
 }
 
-//template <class CallNetwork>
-void spatGraph::generate(Network network, bool setNoflow)  {
 
-    printText("Generating spatial graph");
+//template <class CallNetwork>
+void spatGraph::generate(Network &network, bool print)  {
+
     buildPath = network.buildPath;
     loadPath = network.loadPath;
 
+    printText("Generating spatial graph");
+
     nodtyp = zeros<ivec>(network.getNnod());
-    if (setNoflow)  {
 
-        ivec fnodtyp = zeros<ivec>(network.getNnod());
-        for (int i = 1; i <= max(network.edgeLabels); i++)  {
-            nodtyp.zeros();
-            for (int iseg = 0; iseg < network.getNseg(); iseg++) {
-                int nod1 = network.ista(iseg);
-                int nod2 = network.iend(iseg);
-                if (network.edgeLabels(iseg) == i) {
-                    nodtyp(nod1) += 1;
-                    nodtyp(nod2) += 1;
-                }
-            }
-            uvec idx = find(nodtyp == 1);
-            uvec eidx = find(network.edgeLabels == i);
-            if (idx.n_elem == 0)    {
-                network.noflow(eidx).fill(1);
-            }
-            else if (network.nodpress(idx(0)) == network.nodpress(idx(1)))  {
-                network.noflow(eidx).fill(1);
-            }
-
-        }
-
-        for (int iseg = 0; iseg < network.getNseg(); iseg++) {
-            int nod1 = network.ista(iseg);
-            int nod2 = network.iend(iseg);
-            if (network.noflow(iseg) == 1)  {
-                fnodtyp(nod1) += 1;
-                fnodtyp(nod2) += 1;
-            }
-            if (network.noflow(iseg) == 1)  {
-                network.noflow(find(network.edgeLabels == network.edgeLabels(iseg))).fill(1);
-            }
-        }
-        for (int iseg = 0; iseg < network.getNseg(); iseg++)    {
-            int nod1 = network.ista(iseg);
-            int nod2 = network.iend(iseg);
-            if (fnodtyp(nod1) + 1 == nodtyp(nod1) && fnodtyp(nod2) + 1 == nodtyp(nod2)) {
-                network.noflow(find(network.edgeLabels == network.edgeLabels(iseg))).fill(1);
-            }
-        }
-
-    }
-
-
-    //segname = unique(network.edgeLabels);
     uvec segIdx = find_unique(network.edgeLabels,false);
-    if (setNoflow)  {segIdx = segIdx(find(network.noflow(segIdx) == 0));}
     nseg = segIdx.n_elem;
-    q = network.q(segIdx);
-    hd = network.hd(segIdx);
     segname = network.edgeLabels(segIdx);
+    vesstyp = network.vesstyp(segIdx);
     diam = network.ediam(segIdx);
     lseg = network.elseg(segIdx);
-    vesstyp = network.vesstyp(segIdx);
+    q = network.q(segIdx);
+    hd = network.hd(segIdx);
 
 
-    // Finding edge ends
-    ivec ring = zeros<ivec>(nseg);
+    // Finding edge vertices
+    ivec flagLoop = zeros<ivec>(nseg);
     segnodname = zeros<imat>(2,nseg);
+    ngraphTag = zeros<ivec>(nnod);
     for (int jseg = 0; jseg < nseg; jseg++) {
         nodtyp.zeros();
         for (int iseg = 0; iseg < network.getNseg(); iseg++) {
@@ -114,30 +73,10 @@ void spatGraph::generate(Network network, bool setNoflow)  {
                 nodtyp(network.iend(iseg)) += 1;
             }
         }
-        // Find vertices
-        uvec idx = find(nodtyp == 1);
-        if (idx.n_elem == 0)    { // Ring detected -> remove
-            ring(jseg) = 1;
-        }
-        else {
+        if (min(nodtyp(find(nodtyp))) == 1)   {
+            uvec idx = find(nodtyp == 1);
             segnodname(0, jseg) = network.nodname(idx(1));
             segnodname(1, jseg) = network.nodname(idx(0));
-        }
-    }
-    if (accu(ring) > 0) {
-        for (int iseg = 0; iseg < nseg; iseg++) {
-            if (ring(iseg) == 1)    {
-                segname.shed_row(iseg);
-                vesstyp.shed_row(iseg);
-                segnodname.shed_col(iseg);
-                diam.shed_row(iseg);
-                lseg.shed_row(iseg);
-                q.shed_row(iseg);
-                hd.shed_row(iseg);
-                ring.shed_row(iseg);
-                nseg -= 1;
-                iseg = 0;
-            }
         }
     }
 
@@ -148,7 +87,7 @@ void spatGraph::generate(Network network, bool setNoflow)  {
     nodname = zeros<ivec>(nnod);
     cnode = zeros<mat>(3,nnod);
     for (int inod = 0; inod < nnod; inod++) {
-        for (int jnod = 0; jnod < network.nodname.n_elem; jnod++) {
+        for (int jnod = 0; jnod < (int) network.nodname.n_elem; jnod++) {
             if (nodIdx(inod) == network.nodname(jnod))  {
                 nodname(inod) = network.nodname(jnod);
                 cnode.col(inod) = network.cnode.col(jnod);
@@ -157,78 +96,17 @@ void spatGraph::generate(Network network, bool setNoflow)  {
         }
     }
 
-    ivec noflowBC = zeros<ivec>(network.getNnodbc());
-    if (setNoflow)  {
 
-        if (accu(network.noflow) > 0)   {
-            for (int inodbc = 0; inodbc < network.getNnodbc(); inodbc++)    {
-                for (int iseg = 0; iseg < network.getNseg(); iseg++)    {
-                    if (network.noflow(iseg) == 1 && (network.bcnod(inodbc) == network.ista(iseg) || network.bcnod(inodbc) == network.iend(iseg))) {
-                        noflowBC(inodbc) = 1;
-                        iseg = network.getNseg();
-                    }
-                }
-            }
-        }
-
-    }
-
-
-    bcnodname = network.bcnodname(find(noflowBC == 0));
+    bcnodname = network.bcnodname;
+    bctyp = network.bctyp;
+    bcprfl = network.bcprfl;
+    bchd = network.bchd;
     nnodbc = bcnodname.n_elem;
-    bctyp = network.bctyp(find(noflowBC == 0));
-    bcprfl = network.bcprfl(find(noflowBC == 0));
-    bchd = network.bchd(find(noflowBC == 0));
 
+    nodsegm = network.nodsegm;
     ista = zeros<ivec>(nseg);
     iend = zeros<ivec>(nseg);
-    for (int iseg = 0; iseg < nseg; iseg++)	{
-        //Search for nodes corresponding to this segment
-        for (int i = 0; i < 2; i++) {
-            for (int inod = 0; inod < nnod; inod++) {
-                if (nodname(inod) == segnodname(i,iseg))    {
-                    if (i == 0) {
-                        ista(iseg) = inod;
-                        goto foundit;
-                    }
-                    else if (i == 1)    {
-                        iend(iseg) = inod;
-                        goto foundit;
-                    }
-                }
-            }
-            printText( "No matching node found for segname "+to_string(segname(iseg)),4);
-            foundit:;
-        }
-    }
-
-    nodtyp = zeros<ivec>(nnod);
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        int inod1 = (int) ista(iseg);
-        int inod2 = (int) iend(iseg);
-        nodtyp(inod1) += 1;
-        nodtyp(inod2) += 1;
-    }
-    for (int inod = 0; inod < nnod; inod++) {
-        uvec idx = find(nodname(inod) == bcnodname);
-        if (nodtyp(inod) == 1 && idx.n_elem == 0)  {
-            bcnodname.insert_rows(nnodbc,1);
-            bcnodname(nnodbc) = nodname(inod);
-            bctyp.insert_rows(nnodbc,1);
-            bctyp(nnodbc) = 1;
-            bcprfl.insert_rows(nnodbc,1);
-            bcprfl(nnodbc) = 0.0;
-            bchd.insert_rows(nnodbc,1);
-            for (int iseg = 0; iseg < network.getNseg(); iseg++) {
-                if (network.segnodname(0,iseg) == nodname(inod) || network.segnodname(1,iseg) == nodname(inod)) {
-                    bchd(nnodbc) = network.hd(iseg);
-                    iseg = network.getNseg();
-                }
-            }
-            //bchd(nnodbc) = consthd;
-            nnodbc += 1;
-        }
-    }
+    indexSegmentConnectivity();
 
     alx = network.alx;
     aly = network.aly;
@@ -238,10 +116,25 @@ void spatGraph::generate(Network network, bool setNoflow)  {
     mzz = network.mzz;
     lb = network.lb;
     maxl = network.maxl;
-    nodsegm = network.nodsegm;
+
 
     setup_graphArrays();
-    analyse_network(true);
+    setup_networkArrays();
+    analyse_network(true, print);
+    printNetwork("spatialGraph.txt");
+
+    int cntr = 0;
+    for (int inodbc = 0; inodbc < network.getNnodbc(); inodbc++)    {
+        if (network.bcprfl(inodbc) == 0.0 && network.bctyp(inodbc) == 1)    {
+            cntr += 1;
+        }
+    }
+    cntr -= network.getNnodbc();
+    if (nnodbc != abs(cntr)) {printText("Incorrect number of boundary nodes. Target no. = "+to_string(abs(cntr)),5);}
+    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+        uvec idx = find(bcnodname(inodbc) == network.bcnodname);
+        if (idx.n_elem == 0)    {printText("New boundary node detected",5);}
+    }
 
     for (int iseg = 0; iseg < nseg; iseg++) {
         int inod1 = (int) ista(iseg);
@@ -251,6 +144,28 @@ void spatGraph::generate(Network network, bool setNoflow)  {
     }
 
 }
+
+
+void spatGraph::linkEdges()  {
+
+    for (int inod = 0; inod < nnod; inod++) {
+        if (nodtyp(inod) == 2)  {
+            // Find connected edges between two bifurcations
+            ivec tag = -ones<ivec>(nnod);
+            ivec segFlag = zeros<ivec>(nseg);
+            dfsBasic(inod,1,tag, true, 2);
+
+            for (int iseg = 0; iseg < nseg; iseg++) {
+                if (tag(ista(iseg)) == 1 || tag(iend(iseg)) == 1) {segFlag(iseg) = 1; }
+            }
+
+            diam(find(segFlag == 1)).fill(mean(diam(find(segFlag == 1))));
+            lseg(find(segFlag == 1)).fill(accu(lseg(find(segFlag == 1))));
+        }
+    }
+
+}
+
 
 void spatGraph::defineTrunk()   {
 
@@ -350,7 +265,7 @@ void spatGraph::loadTrunks(const string &filepath) {
 
     imat array = zeros<imat>(n,2);
     for (int i = 0; i < n; i++) {
-        fscanf(data, "%i %i", &array(i,0), &array(i,1));
+        fscanf(data, "%lli %lli", &array(i,0), &array(i,1));
     }
 
     fclose(data);

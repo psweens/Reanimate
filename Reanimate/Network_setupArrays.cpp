@@ -9,21 +9,25 @@ void Network::setup_networkArrays() {
     nodout = zeros<ivec>(nnod);
     nodrank = zeros<ivec>(nnod);
     nk = zeros<ivec>(nnod);
+    sgraphTag = zeros<ivec>(nseg);
+    ngraphTag = zeros<ivec>(nnod);
 
     rseg = zeros<vec>(nseg);
     nodtyp = zeros<ivec>(nnod);
     bcnod = zeros<ivec>(nnodbc);
+    articPnt = zeros<ivec>(nnod);
 
     nodnod = zeros<imat>(nodsegm,nnod);
     nodseg = zeros<imat>(nodsegm,nnod);
 
 }
 
-void Network::setup_flowArrays()    {
+void Network::setup_flowArrays(bool popMatrices)    {
 
     c = zeros<vec>(nseg);
     conductance = zeros<vec>(nseg);
     segpress = zeros<vec>(nseg);
+    tau = zeros<vec>(nseg);
     deadends = zeros<ivec>(nseg);
     subGraphs = zeros<ivec>(nseg);
     BCflow = zeros<vec>(nnodbc);
@@ -35,8 +39,10 @@ void Network::setup_flowArrays()    {
     M = zeros<sp_mat>(nseg,nnod);
     L = zeros<sp_mat>(nnod,nseg);
 
+    qold = q;
+    hdold = hd;
 
-    if (!unknownBCs)    {
+    if (!unknownBCs && popMatrices)    {
 
         for (int inod = 0; inod < nnod; inod++)    {
             int countIndx = 0;
@@ -54,7 +60,6 @@ void Network::setup_flowArrays()    {
                 }
             }
         }
-
     }
 
 
@@ -65,10 +70,10 @@ void Network::setup_estimationArrays()  {
     // Creating an index to flag boundary nodes with unknown boundary conditions
     unknownnod = zeros<ivec>(nnod);
     for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-        if (bctyp(inodbc) == 3)    {
-            unknownnod(bcnod(inodbc)) = 1;
-        }
+        if (bctyp(inodbc) == 3)    {unknownnod(bcnod(inodbc)) = 1;}
     }
+    unknownnod_idx = find(unknownnod == 0);
+    bcpress_idx = find(bctyp == 0);
     nunknown = (int) accu(unknownnod);
     printText("Total unknown conditions = "+to_string(nunknown)+" ("+to_string(100*(float(nunknown)/float(nnodbc)))+"%)");
     nIBnod = nnod - nunknown; // No. of internal and known boundary nodes
@@ -104,7 +109,8 @@ void Network::setup_estimationArrays()  {
     if (accu(bchd) == 0.)   {hd.fill(consthd);}
 
     // Assign target pressure
-    targPress = 31.;//mean(bcprfl(find(bctyp == 0))); // Set target pressure as the mean of the assign boundary pressure conditions
+    //targPress = 31.;
+    targPress = mean(bcprfl(find(bctyp == 0))); // Set target pressure as the mean of the assign boundary pressure conditions
     printNum("Target Pressure = ",targPress,"mmHg");
     p0.fill(targPress * alpha);
 

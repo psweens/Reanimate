@@ -81,10 +81,32 @@ void Network::printText(const string &text, const int type, const int newline)  
         printf("*** WARNING: %s ***\n",text.c_str());
         fprintf(ofp, "*** WARNING: %s ***\n",text.c_str());
     }
+    else if (type == 6) {
+        printf("\n\n");
+        fprintf(ofp, "\n\n");
+        for (int i = 0; i < (int) text.length(); i++)  {
+            printf("-");
+            fprintf(ofp, "-");
+        }
+        printf(" %s ", text.c_str());
+        fprintf(ofp, " %s ", text.c_str());
+        for (int i = 0; i < (int) text.length(); i++) {
+            printf("-");
+            fprintf(ofp, "-");
+        }
+
+        printf("\n");
+        fprintf(ofp, "\n");
+
+    }
     else {
         if (newline == 1)   {
             printf("\n%s\n", text.c_str());
             fprintf(ofp, "\n%s\n", text.c_str());
+        }
+        else if (newline == -1) {
+            printf("%s", text.c_str());
+            fprintf(ofp, "%s", text.c_str());
         }
         else    {
             printf("%s\n", text.c_str());
@@ -137,6 +159,7 @@ void Network::printStat(const string &text, const vec &n, const string &unit)   
     fclose(ofp);
     
 }
+
 
 /*
 int max_double(const double &a, const double &b) {

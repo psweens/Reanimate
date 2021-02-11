@@ -10,11 +10,11 @@ namespace reanimate {
 
     public:
 
-        bool varviscosity,memoryeffects;
-        spatGraph graph{};
+        bool varviscosity,memoryeffects,updateBoundaryHD,loadDeadEnds;
+        spatGraph graph;
 
-        void findDeadends();
-        void bloodFlow(bool varviscosity=true, bool phaseseparation=false, bool memoryeffects=false);
+        void assignBoundaryHD();
+        void bloodFlow(bool varviscosity=true, bool phaseseparation=false, bool memoryeffects=false, bool updateBoundaryHD=false);
 
         Vasculature();
         ~Vasculature();
@@ -29,15 +29,18 @@ namespace reanimate {
         vec viscpar,cpar,bifpar;
 
         double viscor(const double &d, const double &hd);
-        double recovfn(double len, double dp);
+        double recovfn(double &len, double &dp);
         void dishem(bool &memoryeffects, Network &graph);
         void woMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec &flow, Network &graph);
         void wMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec &flow, Network &graph);
         void rheolParams();
         template <typename Call>
-        void splitHD(Call solver);
-        void iterateFlowDir();
-        bool checkNoflow(ivec &noflowOld);
+        void splitHD(Call solver, spatGraph &hdGraph);
+        void iterateFlowDir(spatGraph &hdGraph);
+        void computeConductance();
+        vec computeFlowError(double &relax);
+        void relaxBoundaryHD();
+        void mapFlow(Vasculature &Network);
 
     };
 

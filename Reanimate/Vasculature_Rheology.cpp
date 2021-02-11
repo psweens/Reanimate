@@ -40,7 +40,7 @@ void Vasculature::rheolParams()  {
     vplas = 1.0466;
 
     // Constant hematocrit
-    consthd = 0.45;
+    consthd = 0.4;
 
     // Mean cell vol.
     mcv = 55.;
@@ -89,12 +89,11 @@ double Vasculature::viscor(const double &d, const double &hd) {
 
 void Vasculature::dishem(bool &memoryeffects, Network &graph)    {
 
-    printText("Calculating haematocrit distribution",2, 0);
+    //printText("Calculating haematocrit distribution",2, 0);
 
     int segfltot = graph.getNseg();
     ivec segs = zeros<ivec>(graph.nodsegm);
     vec flow = zeros<vec>(graph.nodsegm);
-
 
     // Assign Hd to boundary nodes
     int isegk{}; // Counts inflowing nodes
@@ -131,7 +130,6 @@ void Vasculature::dishem(bool &memoryeffects, Network &graph)    {
                 graph.hd(segs(1)) = graph.bchd(0);
             }
         }
-
 
         // 3-segment nodes: convergent, divergent
         if (!memoryeffects)  {
@@ -171,43 +169,44 @@ void Vasculature::dishem(bool &memoryeffects, Network &graph)    {
         printText("Hd computed in " + to_string(isegk) + " of " + to_string(segfltot) + " segments processed", 4);
     }
 
+    uvec idx;
     for (int iseg = 0; iseg < graph.getNseg(); iseg++) {
-        uvec idx = find(graph.segname(iseg) == edgeLabels);
+        idx = find(graph.segname(iseg) == edgeLabels);
         hd(idx).fill(graph.hd(iseg));
     }
 
 }
 
-void Vasculature::woMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec &flow, Network &eNetwork)    {
+void Vasculature::woMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec &flow, Network &graph)    {
 
     if (nodt == 3)  {
         if (nout == 1)  { // Convergent - use conservation
-            eNetwork.hd(segs(0)) = (flow(1)*eNetwork.hd(segs(1)) + flow(2)*eNetwork.hd(segs(2))) / flow(0);
+            graph.hd(segs(0)) = (flow(1)*graph.hd(segs(1)) + flow(2)*graph.hd(segs(2))) / flow(0);
         }
         if (nout == 2) { // Divergent - apply empirical law
-            double hdd = (1. - eNetwork.hd(segs(2)))/eNetwork.diam(segs(2));
-            double diaquot = sqrt(eNetwork.diam(segs(0))/eNetwork.diam(segs(1)));
+            double hdd = (1. - graph.hd(segs(2)))/graph.diam(segs(2));
+            double diaquot = pow(graph.diam(segs(0))/graph.diam(segs(1)),2);
             double a = bifpar(2)*(diaquot - 1.)/(diaquot + 1.)*hdd;
             double b = 1. + bifpar(1)*hdd;
             double x0 =  bifpar(0)*hdd;
             double qikdash = (flow(0)/flow(2) - x0)/(1. - 2.*x0);
             if (qikdash <= 0.){
-                eNetwork.hd(segs(0)) = 0.;
-                eNetwork.hd(segs(1)) = eNetwork.hd(segs(2))*flow(2)/flow(1);
+                graph.hd(segs(0)) = 0.;
+                graph.hd(segs(1)) = graph.hd(segs(2))*flow(2)/flow(1);
             }
             else if (qikdash >= 1.){
-                eNetwork.hd(segs(1)) = 0.;
-                eNetwork.hd(segs(0)) = eNetwork.hd(segs(2))*flow(2)/flow(0);
+                graph.hd(segs(1)) = 0.;
+                graph.hd(segs(0)) = graph.hd(segs(2))*flow(2)/flow(0);
             }
             else {
                 double rbcrat = 1./(1. + exp(-a-b*log(qikdash/(1.-qikdash))));
-                eNetwork.hd(segs(0)) = rbcrat*eNetwork.hd(segs(2))*flow(2)/flow(0);
-                eNetwork.hd(segs(1)) = (1.-rbcrat)*eNetwork.hd(segs(2))*flow(2)/flow(1);
+                graph.hd(segs(0)) = rbcrat*graph.hd(segs(2))*flow(2)/flow(0);
+                graph.hd(segs(1)) = (1.-rbcrat)*graph.hd(segs(2))*flow(2)/flow(1);
             }
         }
         else if (nout == 3) {
             for (int i = 0; i < 3; i++) {
-                eNetwork.hd(segs(i)) = eNetwork.bchd(0);
+                graph.hd(segs(i)) = graph.bchd(0);
             }
         }
     }
@@ -223,14 +222,15 @@ void Vasculature::wMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec &
         }
         if (nout == 2) { // Divergent - apply empirical law
             double dp = graph.diam(segs(2));
-            double length = graph.lseg(segs(2)); // Distance to previous bifurcation - calculated using edge/vertex graph
-            double rfn = recovfn(length, dp);
+            double l = graph.lseg(segs(2)); // Distance to previous bifurcation - calculated using edge/vertex graph
+            double rfn{};
+            if (l < dp) {rfn = 0.;}
+            else {rfn = recovfn(l, dp);}
             double x0 = bifpar(0) * (1. - graph.hd(segs(2))) / dp;
             double x0f = x0 * (1. - rfn);
             double x0u = x0 * (1. + rfn);
             double qikdash = (flow(0)/flow(2) - x0f) / (1. - x0u - x0f);
-            double qikdash2 = (flow(0) - x0f * flow(2)) / (flow(2) - flow(0) - x0u * flow(2));
-            double qikdash3 = (flow(0) - x0f * flow(2)) / (flow(1) - x0u * flow(2));
+
             if (qikdash <= 0.){
                 graph.hd(segs(0)) = 0.;
                 graph.hd(segs(1)) = graph.hd(segs(2))*flow(2)/flow(1);
@@ -240,32 +240,13 @@ void Vasculature::wMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec &
                 graph.hd(segs(0)) = graph.hd(segs(2))*flow(2)/flow(0);
             }
             else {
-                double A;
-                A = -6.96 * log(graph.diam(segs(0)) / graph.diam(segs(1))) / dp;
+                double A = -6.96 * log(graph.diam(segs(0)) / graph.diam(segs(1))) / dp;
                 double B = 1. + 6.98 * (1. - graph.hd(segs(2))) / dp;
                 double Ashift = 0.5;
                 double Af = A + Ashift * rfn;
-                double rbfac = exp(Af) * pow(qikdash2, B);
-                double rbfac2 = exp(Af) * pow(qikdash3, B);
-                graph.hd(segs(0)) = (rbfac / (1. + rbfac)) * (flow(2) / flow(0)) * graph.hd(segs(2));
-                graph.hd(segs(1)) = (graph.hd(segs(0)) / rbfac2) * (flow(0) / flow(1));
-                if (isnan(graph.hd(segs(1))) && qikdash3 <= 0.)  {
-                    graph.hd(segs(1)) = 0.;
-                }
-                if (graph.hd(segs(0)) >= 1.)  {
-                    graph.hd(segs(0)) = consthd;
-                }
-                if (graph.hd(segs(1)) >= 1.)  {
-                    graph.hd(segs(1)) = consthd;
-                }
-                /*cout<<"3?: "<<graph.hd(segs(1))<<"\t"<<endl;
-                cout<<"rbfac2: "<<rbfac2<<endl;
-                cout<<"flows: "<<flow(0)<<"\t"<<flow(1)<<"\t"<<flow(2)<<endl;
-                cout<<"x0: "<<x0f<<"\t"<<x0u<<endl;
-                cout<<"B: "<<B<<endl;
-                cout<<"Base: "<<(flow(0) - x0f * flow(2)) / (flow(1) - x0u * flow(2))<<endl;
-                cout<<"num.denom: "<<flow(0) - x0f * flow(2)<<"\t"<<flow(1) - x0u * flow(2)<<endl;
-                cout<<"HDs: "<<graph.hd(segs(0))<<"\t"<<graph.hd(segs(2))<<endl;*/
+                double rbcrat = 1./(1. + exp(-Af-B*log(qikdash/(1.-qikdash))));
+                graph.hd(segs(0)) = rbcrat*graph.hd(segs(2))*flow(2)/flow(0);
+                graph.hd(segs(1)) = (1.-rbcrat)*graph.hd(segs(2))*flow(2)/flow(1);
             }
         }
         else if (nout == 3) {
@@ -278,7 +259,7 @@ void Vasculature::wMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec &
 }
 
 // Cell-free layer 90% recovered -> recovfn = 0.1
-double Vasculature::recovfn(double len, double dp) {
+double Vasculature::recovfn(double &len, double &dp) {
 
     double omeg = 4.; // Cell-free layer is ~90% recovered at a distance 10*dp -> omeg = ~4.
     return exp(-len / (omeg * dp));

@@ -1,4 +1,5 @@
 #include "Network.hpp"
+#include "spatGraph.hpp"
 
 using namespace reanimate;
 
@@ -356,7 +357,7 @@ void Network::printNamira(const string &filename, const string &networkname) {
                 diammax = diam;
                 idiammax = k;
             }
-            fprintf(ofp,"%i %lli %i %i %f %f %f\n",k,3,segnodname1,segnodname2,diam,0.0,0.45);
+            fprintf(ofp,"%i %i %i %i %f %f %f\n",k,3,segnodname1,segnodname2,diam,0.0,0.45);
             segnodname(0,cnt) = segnodname1;
             segnodname(1,cnt) = segnodname2;
             cnt++;
@@ -519,7 +520,7 @@ void Network::printReducedAmira(const string &filename) {
 }
 
 
-void Network::printAmira(const string &filename, const mat &extraData) {
+/*void Network::printAmira(const string &filename, const mat &extraData) {
 
     FILE *ofp1;
 
@@ -537,13 +538,13 @@ void Network::printAmira(const string &filename, const mat &extraData) {
     fprintf(ofp1,"\n POINT { float Radii } @5");
     fprintf(ofp1,"\n POINT { float Extra } @6\n\n");
 
-    // Node coordinates
+    // Vertex coordinates
     fprintf(ofp1,"@1\n");
     for(int inod = 0; inod < nnod; inod++)  {
         fprintf(ofp1,"%.15e %.15e %.15e\n",cnode(0,inod),cnode(1,inod),cnode(2,inod));
     }
 
-    // Connecting nodes
+    // Connecting vertices
     fprintf(ofp1,"\n@2\n");
     for(int iseg = 0; iseg < nseg; iseg++)  {
         fprintf(ofp1,"%i %i\n",(int) ista(iseg),(int) iend(iseg));
@@ -576,5 +577,84 @@ void Network::printAmira(const string &filename, const mat &extraData) {
     }
 
     fclose(ofp1);
+
+}*/
+
+void Network::printAmira(const string &filename, const mat &extraData, bool smooth) {
+
+    if (smooth)     {
+
+        spatGraph graph;
+        graph.generate(*this, false);
+
+        FILE *ofp1;
+
+        ofp1 = fopen((buildPath + filename).c_str(), "w");
+        fprintf(ofp1,"# AmiraMesh 3D ASCII 2.0 \n \n ");
+        fprintf(ofp1,"\n define VERTEX %i",graph.getNnod());
+        fprintf(ofp1,"\n define EDGE %i",graph.getNseg());
+        fprintf(ofp1,"\n define POINT %i",(nnod - graph.getNnod()));
+        fprintf(ofp1,"\n \n Parameters { \n \t ContentType \"HxSpatialGraph\" \n } \n");
+
+        fprintf(ofp1,"\n VERTEX { float[3] VertexCoordinates } @1");
+        fprintf(ofp1,"\n EDGE { int[2] EdgeConnectivity } @2");
+        fprintf(ofp1,"\n EDGE { int NumEdgePoints } @3");
+        fprintf(ofp1,"\n POINT { float [3] EdgePointCoordinates } @4");
+        fprintf(ofp1,"\n POINT { float Radii } @5");
+        fprintf(ofp1,"\n POINT { float Extra } @6\n\n");
+
+        // Vertex coordinates
+        fprintf(ofp1,"@1\n");
+        for(int inod = 0; inod < graph.getNnod(); inod++)  {
+            fprintf(ofp1,"%.15e %.15e %.15e\n",graph.cnode(0,inod),graph.cnode(1,inod),graph.cnode(2,inod));
+        }
+
+        // Connecting vertices
+        fprintf(ofp1,"\n@2\n");
+        for(int iseg = 0; iseg < graph.getNseg(); iseg++)  {
+            fprintf(ofp1,"%i %i\n",(int) graph.ista(iseg),(int) graph.iend(iseg));
+        }
+
+        // Number of points per edge
+        fprintf(ofp1,"\n@3\n");
+        int cntPoints{};
+        uvec idx;
+        for (int iseg = 0; iseg < graph.getNseg(); iseg++)  {
+            cntPoints = 0;
+            idx = find(graph.segname(iseg) == edgeLabels);
+            if (graph.ista(iseg) == graph.iend(iseg))   {cntPoints = (int) idx.n_elem;}
+            else {cntPoints = (int) idx.n_elem - 1;}
+            fprintf(ofp1,"%i \n",cntPoints);
+        }
+
+        // Coordinates of points - in order of start/end nodes for a segment (as read in network data file)
+        fprintf(ofp1,"\n@4\n");
+        uvec nod1, nod2;
+        for (int iseg = 0; iseg < graph.getNseg(); iseg++)  {
+            idx = find(graph.segname(iseg) == edgeLabels);
+            nod1 = find(graph.segnodname(0,iseg) == nodname);
+            nod2 = find(graph.segnodname(1,iseg) == nodname);
+        }
+        for(int iseg = 0; iseg < nseg; iseg++)  {
+            fprintf(ofp1,"%.15e %.15e %.15e\n",cnode(0,ista(iseg)),cnode(1,ista(iseg)),cnode(2,ista(iseg)));
+            fprintf(ofp1,"%.15e %.15e %.15e\n",cnode(0,iend(iseg)),cnode(1,iend(iseg)),cnode(2,iend(iseg)));
+        }
+
+        // Segment radii
+        fprintf(ofp1,"\n@5\n");
+        for(int iseg = 0; iseg < nseg; iseg++)    {
+            fprintf(ofp1,"%.15e\n",rseg(iseg));
+            fprintf(ofp1,"%.15e\n",rseg(iseg));
+        }
+
+        fprintf(ofp1,"\n@6\n");
+        for(int iseg = 0; iseg < nseg; iseg++)    {
+            fprintf(ofp1,"%.15e\n",extraData(iseg,0));
+            fprintf(ofp1,"%.15e\n",extraData(iseg,0));
+        }
+
+        fclose(ofp1);
+
+    }
 
 }

@@ -1,6 +1,7 @@
 #include "Network.hpp"
 #include "spatGraph.hpp"
 #include "Vasculature.hpp"
+#include <sys/resource.h>
 
 using namespace reanimate;
 using namespace std;
@@ -8,42 +9,36 @@ using namespace std;
 int main(int argc, char** argv) {
 
     // Directory setup
-    Vasculature vessNetwork;
-    vessNetwork.buildPath = "/home/sweene01/Documents/Reanimate/Build_Data/";
-    vessNetwork.loadPath = "/home/sweene01/Documents/Reanimate/Load_Data/";
-    vessNetwork.setBuildPath(); // Create build directory / delete contents
-
-    // Read & process amira binary file
-    vessNetwork.lthresh = 10; // Default value in microns (can delete line if using 10um)
-    // Below creates network file ('networkname.txt') & new Amira file based on above threshold ('reducedAmira.am')
-    vessNetwork.readAmira("LS3.am","LS3_Colorectal_Carcinoma");
-    // To load network file straight away, change "LS3Network.txt" to "newNetwork.txt" -> need to assign BCs after loading
+    Vasculature vnet;
+    vnet.setStackSize(); // Prevent stack overflow when running recursive functions (for large networks)
+    vnet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
+    vnet.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
+    vnet.setBuildPath(); // Create build directory / delete contents
 
     // Load network file
-    vessNetwork.loadNetwork("LS3_Colorectal_Carcinoma.txt",true);
+    vnet.loadNetwork("cpNetwork.txt");
+
+
+    mat extraD = zeros<mat>(vnet.getNseg(), 1);
+    vnet.printAmira("amiraNetwork.am", extraD);
+    vnet.hd.fill(0.4);
+    vnet.bchd.fill(0.4);
+
 
     // Solving for blood flow
-    // Following is an example of assigning pressure boundary conditions
-    for (int inodbc = 0; inodbc < vessNetwork.getNnodbc(); inodbc++)    {
-        vessNetwork.bcprfl(inodbc) = 90.;
-        vessNetwork.bctyp(inodbc) = 0;
-    }
-    vessNetwork.bloodFlow(true, true);
-    vessNetwork.pictureNetwork("NetworkDiameters.ps", vessNetwork.diam);
-    vessNetwork.pictureNetwork("NetworkFlow.ps", vessNetwork.qq, true);
-    vessNetwork.pictureNetwork("NetworkPressure.ps", vessNetwork.segpress);
-    vessNetwork.pictureNetwork("NetworkShearStress.ps", vessNetwork.tau, true);
-    vessNetwork.pictureNetwork("NetworkHD.ps", vessNetwork.hd);
-    vessNetwork.printNetwork("solvedNetwork.txt");
-    mat extraData = zeros<mat>(vessNetwork.getNseg(), 1);
-    extraData.col(0) = vessNetwork.hd;
-    vessNetwork.printAmira("amiraHD.am", extraData);
+    //vnet.loadDeadEnds = true;
+    vnet.bloodFlow(true, true, false, false);
 
-    // Vessel classification analysis
-    //spatGraph eCortex;
-    //eCortex.generate(vessNetwork, true);
-    //eCortex.pictureNetwork(buildPath + "eNetworkDiameters.ps",eCortex.diam);
-    //eCortex.loadTrunks(loadPath + "NetworkClass.txt");
-    //eCortex.pictureNetwork(buildPath + "eNetworkGeometry.ps",conv_to<vec>::from(eCortex.geometry));*/
+    extraD = zeros<mat>(vnet.getNseg(), 1);
+    extraD.col(0) = vnet.segpress;
+    vnet.printAmira("amiraPressure.am", extraD);
+    extraD.col(0) = vnet.hd;
+    vnet.printAmira("amiraHD.am", extraD);
+
+    vnet.pictureNetwork("NetworkDiameters.ps", vnet.diam);
+    vnet.pictureNetwork("NetworkPressure.ps", vnet.segpress);
+    vnet.pictureNetwork("NetworkFlow.ps", vnet.qq);
+    vnet.pictureNetwork("NetworkHaematocrit.ps", vnet.hd);
+    vnet.printNetwork("solved_NetworkBloodFlow.txt");
 
 }

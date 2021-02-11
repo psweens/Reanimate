@@ -1,4 +1,5 @@
 #include "Network.hpp"
+#include "spatGraph.hpp"
 
 #include <string>
 #include <dirent.h>
@@ -8,17 +9,18 @@ using namespace reanimate;
 
 void Network::setBuildPath() {
 
-    printText("Setting build directory");
+    printf("Setting build directory ...\n");
     DIR* dir = opendir(buildPath.c_str());
     if (dir) {
-        printText("Directory exits, removing contents",2,0);
+        printf("Directory exists, deleting contents\n");
         string contents = buildPath + "*";
         system(("rm " + contents).c_str());
-        closedir(dir);
-    } else if (ENOENT == errno) {
-        printText("Directory does not exist, creating folder",2,0);
+    }
+    else {
+        printf("Directory does not exist. Creating folder ...\n");
         system(("mkdir " + buildPath).c_str());
     }
+    closedir(dir);
 
 }
 
@@ -37,7 +39,6 @@ Network::Network() {
     unknownBCs=false;
 
     rLog = "Reanimate_Log.txt";
-    initLog();
 
 }
 Network::~Network() = default;
@@ -50,6 +51,7 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
 
     if (!directFromAmira)   {networkPath = loadPath + filename;}
     else {networkPath = buildPath + filename;}
+    initLog(); // Initialise log
 
     FILE *ifp;
     ifp = fopen(networkPath.c_str(),"r");
@@ -174,190 +176,53 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
     mat data = zeros<mat>(nseg,2);
     data.col(0) = diam;
     data.col(1) = lseg;
-    printHistogram(buildPath + "DiamLength_HistogramData.txt", data, headers);
+    printHistogram("DiamLength_HistogramData.txt", data, headers);
 
 }
 
-void Network::analyse_network(bool graph)   {
 
-    if (graph)  {
-        printNum("No. of edges =", nseg);
-        printNum("No. of vertices =", nnod);
-        printNum("No. of leaf vertices =", nnodbc);
+void Network::subNetwork(ivec &index, bool graph, bool print) {
+
+    if (print) {printText("Creating subnetwork");}
+
+    uvec idx = find(index == 1);
+    segname.shed_rows(idx);
+    vesstyp.shed_rows(idx);
+    segnodname.shed_cols(idx);
+    diam.shed_rows(idx);
+    lseg.shed_rows(idx);
+    q.shed_rows(idx);
+    hd.shed_rows(idx);
+    if (!graph) {
+        edgeLabels.shed_rows(idx);
+        elseg.shed_rows(idx);
+        ediam.shed_rows(idx);
     }
-    else {
-        printNum("No. of segments =", nseg);
-        printNum("No. of nodes =", nnod);
-        printNum("No. of boundary nodes =", nnodbc);
-    }
+    index.shed_rows(idx);
+    nseg = segname.n_elem;
 
 
-    for (int iseg = 0; iseg < nseg; iseg++)	{
-        //Search for nodes corresponding to this segment
-        for (int i = 0; i < 2; i++) {
-            for (int inod = 0; inod < nnod; inod++) {
-                if (nodname(inod) == segnodname(i,iseg))    {
-                    if (i == 0) {
-                        ista(iseg) = inod;
-                        goto foundit;
-                    }
-                    else if (i == 1)    {
-                        iend(iseg) = inod;
-                        goto foundit;
-                    }
-                }
-            }
-            printText( "No matching node found for segname " + to_string(segname(iseg)),4);
-            foundit:;
-        }
-    }
-
-
-    // Setup nodtyp, nodseg and nodnod
-    // 'nodseg' -> for each nodes, store the corresponding segment index
-    // 'nodnod' -> for each node, store the nodal index of the opposite side of the segment
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        int inod1 = (int) ista(iseg);
-        int inod2 = (int) iend(iseg);
-        nodtyp(inod1) += 1;
-        nodtyp(inod2) += 1;
-        if (nodtyp(inod1) > nodsegm) {
-            printText( "Too many segments connected to node " + to_string(inod1),4);
-        }
-        if (nodtyp(inod2) > nodsegm) {
-            printText( "Too many segments connected to node " + to_string(inod2),4);
-        }
-        nodseg(nodtyp(inod1) - 1,inod1) = iseg;
-        nodseg(nodtyp(inod2) - 1,inod2) = iseg;
-        nodnod(nodtyp(inod1) - 1,inod1) = inod2;
-        nodnod(nodtyp(inod2) - 1,inod2) = inod1;
-    }
-
-    for (int inodbc = 0; inodbc < nnodbc; inodbc++){
-        // Search for node corresponding to this node name
-        for (int inod = 0; inod < nnod; inod++) {
-            if(nodname(inod) == bcnodname(inodbc))  {
-                bcnod(inodbc) = inod;
-                if(nodtyp(inod) != 1)   {
-                    printText( "Boundary node " + to_string(nodname(inod)) + " is not a 1-segment node",4);
-                }
-                goto foundit2;
-            }
-        }
-        printText("No matching node found for nodname " + to_string(bcnodname(inodbc)) + " , " + to_string(inodbc), 4);
-        foundit2:;
-    }
-
-
-    // Start(k,iseg) = coordinates of starting point of segment iseg
-    // End(k,iseg) = coordinates of ending point of segment iseg
-    computeLseg = 1;
-    qq = abs(q);
-    vec ss = zeros<vec>(3);
-    mat Start = zeros<mat>(3,nseg);
-    mat End = zeros<mat>(3,nseg);
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        rseg(iseg) = diam(iseg) / 2.0;
-        qq(iseg) = abs(q(iseg));
-        for (int k = 0; k < 3; k++){
-            Start(k,iseg) = cnode(k,ista(iseg));
-            End(k,iseg) = cnode(k,iend(iseg));
-            ss(k) = End(k,iseg) - Start(k,iseg);
-        }
-        if (computeLseg == 1)  {
-            lseg(iseg) = sqrt(pow(ss(0),2) + pow(ss(1),2) + pow(ss(2),2));
-        }
-    }
-
-    BCgeo = zeros<ivec>(nnodbc);
-    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-        for (int iseg = 0; iseg < nseg; iseg++) {
-            if (bcnod(inodbc) == ista(iseg) || bcnod(inodbc) == iend(iseg)) {
-                if (vesstyp(iseg) == 1)    {
-                    BCgeo(inodbc) = 1;
-                }
-                else if (vesstyp(iseg) == 2)   {
-                    BCgeo(inodbc) = 2;
-                }
-                else {
-                    BCgeo(inodbc) = 3;
-                }
-            }
-        }
-    }
-
-}
-
-void Network::subNetwork(ivec &index, bool graph) {
-
-    printText("Creating subnetwork");
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        if (index(iseg) == 1)   {
-            segname.shed_row(iseg);
-            vesstyp.shed_row(iseg);
-            segnodname.shed_col(iseg);
-            diam.shed_row(iseg);
-            lseg.shed_row(iseg);
-            q.shed_row(iseg);
-            hd.shed_row(iseg);
-            index.shed_row(iseg);
-            nseg -= 1;
-            iseg = 0;
-        }
-    }
-    
+    // Populate connectivity indices
     ista = zeros<ivec>(nseg);
     iend = zeros<ivec>(nseg);
-    for (int iseg = 0; iseg < nseg; iseg++)    {
-        //Search for nodes corresponding to this segment
-        for (int i = 0; i < 2; i++) {
-            for (int inod = 0; inod < nnod; inod++) {
-                if (nodname(inod) == segnodname(i,iseg))    {
-                    if (i == 0) {
-                        ista(iseg) = inod;
-                        goto foundit;
-                    }
-                    else if (i == 1)    {
-                        iend(iseg) = inod;
-                        goto foundit;
-                    }
-                }
-            }
-            printText( "No matching node found for segname " + to_string(segname(iseg)),4);
-        foundit:;
-        }
-    }
+    indexSegmentConnectivity();
     
     
-    //Setup nodtyp, nodseg and nodnod
+    // Update nodes types
     nodtyp.zeros();
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        int inod1 = (int) ista(iseg);
-        int inod2 = (int) iend(iseg);
-        nodtyp(inod1) += 1;
-        nodtyp(inod2) += 1;
-        if(nodtyp(inod1) > nodsegm) {
-            printText( "Too many segments connected to node " + to_string(inod1),4);
-        }
-        if(nodtyp(inod2) > nodsegm) {
-            printText( "Too many segments connected to node " + to_string(inod2),4);
-        }
-    }
-    
-    for (int inod = 0; inod < nnod; inod++) {
-        if (nodtyp(inod) == 0)  {
-            nodname.shed_row(inod);
-            nodtyp.shed_row(inod);
-            cnode.shed_col(inod);
-            inod = 0;
-            nnod -= 1;
-        }
-    }
-    
+    indexNodeConnectivity();
+    idx = find(nodtyp == 0);
+    nodname.shed_rows(idx);
+    nodtyp.shed_rows(idx);
+    cnode.shed_cols(idx);
+    nnod = nodname.n_elem;
+
+
+    // Update boundary nodes
     ivec copyBCnodname = bcnodname;
     ivec copyBCtyp = bctyp;
     vec copyBCprfl = bcprfl;
-    
+    vec copyBCHD = bchd;
     nnodbc = 0;
     for (int inod = 0; inod < nnod; inod++) {
         if (nodtyp(inod) == 1)  {
@@ -369,9 +234,10 @@ void Network::subNetwork(ivec &index, bool graph) {
     bctyp = zeros<ivec>(nnodbc);
     bcprfl = zeros<vec>(nnodbc);
     bchd = zeros<vec>(nnodbc);
-    bchd.fill(0.4);
+    bchd = zeros<vec>(nnodbc);
     
     int jnodbc = 0;
+    int found{};
     for (int inod = 0; inod < nnod; inod++) {
         if (nodtyp(inod) == 1)  {
             bcnodname(jnodbc) = nodname(inod);
@@ -379,18 +245,50 @@ void Network::subNetwork(ivec &index, bool graph) {
                 if (bcnodname(jnodbc) == copyBCnodname(knodbc)) {
                     bctyp(jnodbc) = copyBCtyp(knodbc);
                     bcprfl(jnodbc) = copyBCprfl(knodbc);
-                    goto here;
-                }
-                else {
-                    bctyp(jnodbc) = 3;
+                    bchd(jnodbc) = copyBCHD(knodbc);
+                    knodbc = copyBCnodname.n_elem;
+                    found = 1;
                 }
             }
-        here:;
+            if (found == 0) {
+                bctyp(jnodbc) = -3;
+            }
             jnodbc += 1;
+            found = 0;
         }
     }
 
     (*this).setup_networkArrays();
-    (*this).analyse_network(graph);
+    (*this).analyse_network(graph,print);
+
+}
+
+void Network::removeNewBC(ivec storeBCnodname, bool print, bool graph) {
+
+    ivec newBC = zeros<ivec>(nnod);
+    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+        uvec idx = find(bcnodname(inodbc) == storeBCnodname);
+        if (idx.n_elem == 0)    {newBC(bcnod(inodbc)) = 1;}
+    }
+
+    ivec removeBridge = zeros<ivec>(nnod);
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        ivec tagNode = -ones<ivec>(nnod);
+        if (newBC(ista(iseg)) == 1)    {
+            dfsBasic(iend(iseg),1,tagNode, true, 2);
+            tagNode(ista(iseg)) = 1;
+        }
+        else if (newBC(iend(iseg)) == 1)   {
+            dfsBasic(ista(iseg),1,tagNode, true, 2);
+            tagNode(iend(iseg)) = 1;
+        }
+        uvec idx  = find(tagNode == 1);
+        if (idx.n_elem > 0) {removeBridge(idx).fill(1);}
+    }
+    ivec removeSegments = zeros<ivec>(nseg);
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        if (removeBridge(ista(iseg)) == 1 && removeBridge(iend(iseg)) == 1) {removeSegments(iseg) = 1;}
+    }
+    subNetwork(removeSegments, graph, print);
 
 }

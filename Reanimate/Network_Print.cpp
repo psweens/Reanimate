@@ -28,7 +28,7 @@ void Network::printNetwork(const string& filename, bool resetDomain)    {
 
 
     ofp = fopen((buildPath + filename).c_str(),"w");
-    fprintf(ofp,"%s",networkName.c_str());
+    fprintf(ofp,"%s\n",networkName.c_str());
     fprintf(ofp,"%f %f %f  Box dimensions in microns \n",alx-minx,aly-miny,alz-minz);
     fprintf(ofp,"%i %i %i  No. of tissue points in x,y,z directions \n",mxx,myy,mzz);
     fprintf(ofp,"%f    Outer bound distance \n",lb);
@@ -54,9 +54,10 @@ void Network::printNetwork(const string& filename, bool resetDomain)    {
 
 }
 
-void Network::printHistogram(const string &filename, mat &data, const field<string> &headers)   {
+void Network::printHistogram(string filename, mat &data, const field<string> &headers)   {
 
     FILE *ofp;
+    filename = buildPath + filename;
     ofp = fopen(filename.c_str(),"w");
     fprintf(ofp,"Histogram Data\n");
 
@@ -68,7 +69,7 @@ void Network::printHistogram(const string &filename, mat &data, const field<stri
         double dmean = mean(data.col(i));
         double dSD = stddev(data.col(i));
 
-        int range = round(dmax)-round(dmin)+1;
+        int range = (int) (round(dmax)-round(dmin)+1);
         vec drange = linspace<vec>(round(dmin),round(dmax),range);
         vec dhist = conv_to<vec>::from(hist(data.col(i),drange));
 
@@ -82,6 +83,27 @@ void Network::printHistogram(const string &filename, mat &data, const field<stri
             fprintf(ofp,"%f \t %f\n", drange(j), dhist(j));
         }
 
+    }
+
+    fclose(ofp);
+
+}
+
+void Network::printRawData(string filename, mat &data, const field<string> &headers) {
+
+    FILE *ofp;
+    filename = buildPath + filename;
+    ofp = fopen(filename.c_str(),"w");
+
+    for (int i =-1; i < (int) data.n_rows; i++) {
+        if (i == -1)    {fprintf(ofp,"%s \t %s\n",headers(0,0).c_str(),headers(0,1).c_str());}
+        else  {
+            for (int j = 0; j < (int) data.n_cols; j++) {
+                if (data(i,j) != 0.4)   {fprintf(ofp,"%f \t", data(i,j));}
+
+            }
+            fprintf(ofp,"\n");
+        }
     }
 
     fclose(ofp);

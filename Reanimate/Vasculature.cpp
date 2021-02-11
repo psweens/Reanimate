@@ -8,9 +8,11 @@ using namespace reanimate;
 
 Vasculature::Vasculature() {
 
-    varviscosity=true;
-    phaseseparation=false;
-    memoryeffects=false;
+    varviscosity = true;
+    phaseseparation = false;
+    memoryeffects = false;
+    updateBoundaryHD = false;
+    loadDeadEnds = false;
 
     // Hd and q tolerances for variable Hd
     hdtol = 1.e-3;

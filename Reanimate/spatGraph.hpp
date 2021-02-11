@@ -13,29 +13,32 @@ namespace reanimate {
 
     public:
 
-        int nTrees{},narterioles,nvenules;
+        int nTrees{},narterioles{},nvenules{};
         double Dr{},Dmin{};
-        ivec geometry,isBridge,isBridgehead,visited;
+        ivec geometry,isBridge,isBridgehead;//visited,articPnt,connectedComp,connectedVert;
         imat InOutlets;
-        //template <class CallNetwork>
-        void generate(Network network, bool setNoflow=false);
+        void generate(Network &network, bool print=false);
         void defineTrunk();
         void loadTrunks(const string &filepath);
         void analyseTopology(imat predefinedInput=NULL);
-        void dfsBasic(int v, int tag);
-        void dfsBridge(int v, int p = -1);
+        void dfsBridge(int v, int p=-1);
         void findBridges();
         void findBridgeheads();
-        void traverseGraph();
+        void removeNewBoundaries(ivec storeBCnodname, bool print=false);
+        void removeNoflowBoundaries(ivec &bnodes, bool print=false);
+        void linkEdges();
+
+        ivec findParallelEdges();
+        ivec findParallelLoops(ivec &x);
 
         spatGraph();
         ~spatGraph();
 
     private:
 
-        int timer{};
-        ivec Pa,Rs,feedNod,dFeedNod,drainNod,flagTree,daughter,Rn,tin,low;
-        imat segnod;
+        //int timer{};
+        ivec Pa,Rs,feedNod,dFeedNod,drainNod,flagTree,daughter,Rn,dGraphs;//tin,low,;
+        sp_mat segnod;
 
         void setup_graphArrays();
         void classifyNetwork(imat &InOutlets, ivec &geometry);
