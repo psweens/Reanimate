@@ -17,7 +17,7 @@ namespace reanimate {
         double Dr{},Dmin{};
         ivec geometry,isBridge,isBridgehead;//visited,articPnt,connectedComp,connectedVert;
         imat InOutlets;
-        void generate(Network &network, bool print=false);
+        void generate(Network &network, bool print=false, bool noflow=false);
         void defineTrunk();
         void loadTrunks(const string &filepath);
         void analyseTopology(imat predefinedInput=NULL);

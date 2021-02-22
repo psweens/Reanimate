@@ -26,7 +26,7 @@ namespace reanimate {
         bool unknownBCs,phaseseparation;
         int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track,nitmax{};
         double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.};
-        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt;
+        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,nodout,nodrank,nk,deadEnds,articPnt;
         vec diam,rseg,lseg,q,qq,hd,bcprfl,bchd,nodpress,BCflow,BCpress,tau,segpress,elseg,ediam;
         uvec unknownnod_idx,bcpress_idx;
         imat segnodname,nodnod,nodseg;
@@ -108,6 +108,7 @@ namespace reanimate {
         double timer;
         ivec visited, tin, low;
 
+        double pointAverage(const int &pnt, const ivec &pntIdx, const vec &param);
         void setup_networkArrays();
         void setup_flowArrays(bool popMatrices=true);
         void setup_estimationArrays();

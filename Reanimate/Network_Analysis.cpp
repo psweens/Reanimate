@@ -156,7 +156,6 @@ void Network::edgeNetwork() {
 
     int edgIdx = 1;
     ivec flag = zeros<ivec>(nseg);
-    loops = zeros<ivec>(nseg);
     edgeLabels = -ones<ivec>(nseg);
     elseg = zeros<vec>(nseg);
     ediam = zeros<vec>(nseg);
