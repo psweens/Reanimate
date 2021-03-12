@@ -6,6 +6,7 @@ void Network::putrank(Network &sGraph)  {
 
     //printText("Calculating flow ranking",2, 0);
 
+    flag = zeros<ivec>(nseg);
     sGraph.q.zeros();
     uvec idx, node1, node2;
     for (int iseg = 0; iseg < sGraph.getNseg(); iseg++) {
@@ -94,5 +95,18 @@ void Network::putrank(Network &sGraph)  {
         if(sGraph.nk(inod) == 0)  {cnt_error += 1;}
     }
     if (cnt_error > 0)  {printText(to_string(cnt_error)+" Unprocessed nodes in putrank",4);}
+
+}
+
+
+void Network::computeBoundaryFlow()  {
+
+    int nod{};
+    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+        nod = bcnod(inodbc);
+        BCpress(inodbc) = nodpress(nod);
+        BCflow(inodbc) = abs(q(nodseg(0,nod)));
+        if (nodpress(nod) < nodpress(nodnod(0,nod)))    {BCflow(inodbc) *= -1;}
+    }
 
 }

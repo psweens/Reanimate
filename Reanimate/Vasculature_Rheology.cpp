@@ -57,7 +57,6 @@ double Vasculature::viscor(const double &d, const double &hd) {
     double ePeak = 0.6;
     double eHD = 1.18;
     double wMax = 2.6;
-    //vplas *= 1e-9; // Viscosity of plasma in kg/mu s
 
     double wAs = 0.;
     if (dOff < d)   {

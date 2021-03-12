@@ -24,7 +24,7 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
         deadEnds = vesstyp;}
     else {
         deadEnds = networkCopy.findDeadends();
-        vesstyp = deadEnds;
+        //vesstyp = deadEnds;
         printNetwork("network_DeadendsLabels.txt");
     }
     if (accu(deadEnds) > 0) {
@@ -35,7 +35,7 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
     networkCopy.printAmira("amiraDeadEnd.am", extraD);
 
     spatGraph hdGraph;
-    hdGraph.generate(networkCopy, true, true); // Diameter / length dimensions are in microns (taken from edge data)
+    hdGraph.generate(networkCopy, true); // Diameter / length dimensions are in microns (taken from edge data)
     if (any(hdGraph.nodtyp == 2) && memoryeffects)   {
         printText( "Type 2 vertex detected. Amending ...",1,0);
         hdGraph.linkEdges();
@@ -75,9 +75,7 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
     if (!unknownBCs)    {
         for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
 
-        for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-            BCpress(inodbc) = nodpress(bcnod(inodbc));
-        }
+        computeBoundaryFlow();
         tau = (c % qq)*(gamma/beta);
     }
     else    {
@@ -124,7 +122,7 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
 
         // Flow solver
         (this->*solver)();
-        if (any(q == 0.0))  {printText( "No flow detected",5);
+        /*if (any(q == 0.0))  {printText( "No flow detected",5);
             vec temp = zeros<vec>(nseg);
             temp(find(q == 0.0)).fill(1.);
             mat extraD = zeros<mat>(nseg, 1);
@@ -152,7 +150,7 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
                 }
             }
 
-        }
+        }*/
         if (unknownBCs) {
             // To allow tau0 to update flow directions rather than magnitude
             flowsign = sign(q);
@@ -239,13 +237,8 @@ void Vasculature::iterateFlowDir(spatGraph &hdGraph)   {
 
             printText("Final ktau/kp = "+to_string(ktau/kp)+", mean wall shear stress = "+to_string(mean(tau))+" dyn/cm2",1);
 
-            for (int iseg = 0; iseg < nseg; iseg++) {
-                segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;
-            }
-
-            for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-                BCpress(inodbc) = nodpress(bcnod(inodbc));
-            }
+            for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
+            computeBoundaryFlow();
 
         }
         else {

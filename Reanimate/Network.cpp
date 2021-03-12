@@ -7,14 +7,16 @@
 using namespace std;
 using namespace reanimate;
 
-void Network::setBuildPath() {
+void Network::setBuildPath(bool deleteFiles) {
 
     printf("Setting build directory ...\n");
     DIR* dir = opendir(buildPath.c_str());
     if (dir) {
-        printf("Directory exists, deleting contents\n");
-        string contents = buildPath + "*";
-        system(("rm " + contents).c_str());
+        if (deleteFiles) {
+            printf("Directory exists, deleting contents\n");
+            string contents = buildPath + "*";
+            system(("rm " + contents).c_str());
+        }
     }
     else {
         printf("Directory does not exist. Creating folder ...\n");
@@ -26,17 +28,18 @@ void Network::setBuildPath() {
 
 Network::Network() {
 
-    gamma = 1./(1.e3*60);
-    alpha = 0.1333;
+    gamma = 1./(1.e3*60); //  mm3/s / gamma -> nl/min
+    alpha = 0.1333; // kg/mm.s2 / alpha -> mmHg (133.3 Pa)
     beta = 1.e-4;
-    xi = 0.001*1e-3;
+    xi = 1e-6; // kg/mm.s / xi -> cP (1e-3 Pa.s)
 
     consthd = 0.45;
 
     kp = 0.1;
     ktau = 1.e-4;
 
-    unknownBCs=false;
+    unknownBCs = false;
+    silence = false;
 
     rLog = "Reanimate_Log.txt";
 
