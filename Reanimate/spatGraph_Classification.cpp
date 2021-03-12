@@ -4,9 +4,9 @@ using namespace reanimate;
 
 void spatGraph::classifyNetwork(imat &InOutlets, ivec &geometry)  {
 
-    cout<<"Running topological network classification ..."<<endl;
-    cout<<"Dmin = "<<Dmin<<endl;
-    cout<<"Dr = "<<Dr<<endl;
+    printText("Classifying vasculature based on network topology");
+    printNum("Dmin =", Dmin);
+    printNum("Dr =", Dr);
 
     Pa = zeros<ivec>(nseg);
     Rs = zeros<ivec>(nseg);
@@ -253,8 +253,8 @@ void spatGraph::internalClassificationLoop(const int &init_seg, const int &class
             feedNod(init_seg) = 2;
         }
         else    {
-            cout<<"\t\t\t*** Error: Input not a boundary node ***"<<endl;
-            cout<<"\t\t\t...Exiting algorithm"<<endl;
+            printText("Input not a boundary node",4);
+            printText("Exciting classifier");
             goto exit;
         }
     }
@@ -439,4 +439,17 @@ void spatGraph::internalClassificationLoop(const int &init_seg, const int &class
 
 
     exit:;
+}
+
+
+void spatGraph::mapClassification(Network &net) {
+
+    uvec idx;
+    net.flagTree = zeros<ivec>(net.getNseg());
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        idx = find(segname(iseg) == net.edgeLabels);
+        net.vesstyp(idx).fill(geometry(iseg));
+        net.flagTree(idx).fill(flagTree(iseg));
+    }
+
 }

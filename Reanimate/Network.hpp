@@ -23,34 +23,42 @@ namespace reanimate {
     public:
 
         string networkName,networkPath,buildPath,loadPath,rLog;
-        bool unknownBCs,phaseseparation;
+        bool unknownBCs,phaseseparation,silence;
         int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track,nitmax{};
+
         double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.},tissDensity{},bloodDensity{};
-        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,nodout,nodrank,nk,deadEnds,articPnt;
+        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,nodout,flagTree,nodrank,nk,deadEnds,articPnt;
         vec diam,rseg,lseg,q,qq,vel,hd,bcprfl,bchd,nodpress,BCflow,BCpress,tau,segpress,elseg,ediam;
+
         uvec unknownnod_idx,bcpress_idx;
         imat segnodname,nodnod,nodseg;
         mat cnode,bcp;
 
-        void setBuildPath();
+        void setBuildPath(bool deleteFiles=true);
         void loadNetwork(const string &filename, const bool directFromAmira=false);
         void analyse_network(bool graph = false, bool print = true);
         void indexSegmentConnectivity();
         void indexNodeConnectivity();
+        void indexBCconnectivity();
+        void findLengths();
         void subNetwork(ivec &index, bool graph = false, bool print = true);
         void edgeNetwork();
         void pictureNetwork(const string &filename, vec vector, bool logdist = false, int nl=20, bool nodes=false, bool segs=false);
         void fullSolver();
         void estimationSolver();
         void putrank(Network &sGraph);
+        void computeBoundaryFlow();
         int readAmira(const string &filename, const string &networkname, bool stubs=false);
         void processAmira(const bool &stubs);
         void dfsBasic(int v, int tag, ivec &track, bool nodeCondition=false, int type=2);
         void doubleDfs(int v, int tag, double val, ivec &track, vec &param, string cond="GT");
+
         void dfsArtic(int v, int p=-1);
         void findArticulationPoints();
         ivec findDeadends();
         void removeNewBC(ivec storeBCnodname, bool print=false, bool graph=false);
+        void setup_networkArrays();
+        void setup_flowArrays(bool popMatrices=true);
 
 
         // 'Getter' functions
@@ -64,10 +72,19 @@ namespace reanimate {
         void setNnodbc(int nnodbc);
         void setStackSize(int stackSize=16*1024*1024);
 
+        // Math functions
+        double eucDistance(vec &x, vec &y);
+        double SPHI(int &n, double &x);
+        double SPHK(int &n, double &x);
+        vec lognormal(double &mean, double &SD, int &nseg);
+        mat eulerRotation(const vec &c, const vec &d);
+
         // Auxiliary functions
         int detect_col(FILE *ifp);
         void initLog();
+
         double nodeAverage(const int &inod, const vec &param);
+        void findBoundingBox();
 
         // Print Functions
         void printText(const string &text, const int type=2, const int newline=1);

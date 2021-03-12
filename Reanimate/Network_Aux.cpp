@@ -44,120 +44,153 @@ void Network::initLog()    {
 void Network::printText(const string &text, const int type, const int newline)   {
 
     // Type: (1) normal text, (2) loading description, (3) module, (4) error, (5) warning
-    
-    FILE *ofp;
-    ofp = fopen((buildPath + rLog).c_str(),"a");
-    if (type == 2)  {
-        if (newline == 1)   {
-            printf("\n%s ...\n", text.c_str());
-            fprintf(ofp, "\n%s ... \n", text.c_str());
-        }
-        else {
-            printf("%s ...\n", text.c_str());
-            fprintf(ofp, "%s ... \n", text.c_str());
-        }
-    }
-    else if (type == 3) {
-        printf("\n\n");
-        fprintf(ofp, "\n\n");
-        for (int i = 0; i < (int) text.length(); i++)  {
-            printf("-");
-            fprintf(ofp, "-");
-        }
-        printf("\n%s\n", text.c_str());
-        fprintf(ofp, "\n%s\n", text.c_str());
-        for (int i = 0; i < (int) text.length(); i++) {
-            printf("-");
-            fprintf(ofp, "-");
-        }
-        printf("\n");
-        fprintf(ofp, "\n");
-    }
-    else if (type == 4) {
-        printf("*** ERROR: %s ***\n",text.c_str());
-        fprintf(ofp, "*** ERROR: %s ***\n",text.c_str());
-    }
-    else if (type == 5) {
-        printf("*** WARNING: %s ***\n",text.c_str());
-        fprintf(ofp, "*** WARNING: %s ***\n",text.c_str());
-    }
-    else if (type == 6) {
-        printf("\n\n");
-        fprintf(ofp, "\n\n");
-        for (int i = 0; i < (int) text.length(); i++)  {
-            printf("-");
-            fprintf(ofp, "-");
-        }
-        printf(" %s ", text.c_str());
-        fprintf(ofp, " %s ", text.c_str());
-        for (int i = 0; i < (int) text.length(); i++) {
-            printf("-");
-            fprintf(ofp, "-");
-        }
+    if (!silence)   {
 
-        printf("\n");
-        fprintf(ofp, "\n");
-
-    }
-    else {
-        if (newline == 1)   {
+        FILE *ofp;
+        ofp = fopen((buildPath + rLog).c_str(),"a");
+        if (type == 2)  {
+            if (newline == 1)   {
+                printf("\n%s ...\n", text.c_str());
+                fprintf(ofp, "\n%s ... \n", text.c_str());
+            }
+            else {
+                printf("%s ...\n", text.c_str());
+                fprintf(ofp, "%s ... \n", text.c_str());
+            }
+        }
+        else if (type == 3) {
+            printf("\n\n");
+            fprintf(ofp, "\n\n");
+            for (int i = 0; i < (int) text.length(); i++)  {
+                printf("-");
+                fprintf(ofp, "-");
+            }
             printf("\n%s\n", text.c_str());
             fprintf(ofp, "\n%s\n", text.c_str());
+            for (int i = 0; i < (int) text.length(); i++) {
+                printf("-");
+                fprintf(ofp, "-");
+            }
+            printf("\n");
+            fprintf(ofp, "\n");
         }
-        else if (newline == -1) {
-            printf("%s", text.c_str());
-            fprintf(ofp, "%s", text.c_str());
+        else if (type == 4) {
+            printf("*** ERROR: %s ***\n",text.c_str());
+            fprintf(ofp, "*** ERROR: %s ***\n",text.c_str());
         }
-        else    {
-            printf("%s\n", text.c_str());
-            fprintf(ofp, "%s\n", text.c_str());
+        else if (type == 5) {
+            printf("*** WARNING: %s ***\n",text.c_str());
+            fprintf(ofp, "*** WARNING: %s ***\n",text.c_str());
         }
-    }
+        else if (type == 6) {
+            printf("\n\n");
+            fprintf(ofp, "\n\n");
+            for (int i = 0; i < (int) text.length(); i++)  {
+                printf("-");
+                fprintf(ofp, "-");
+            }
+            printf(" %s ", text.c_str());
+            fprintf(ofp, " %s ", text.c_str());
+            for (int i = 0; i < (int) text.length(); i++) {
+                printf("-");
+                fprintf(ofp, "-");
+            }
 
-    fclose(ofp);
+            printf("\n");
+            fprintf(ofp, "\n");
+
+        }
+        else {
+            if (newline == 1)   {
+                printf("\n%s\n", text.c_str());
+                fprintf(ofp, "\n%s\n", text.c_str());
+            }
+            else if (newline == -1) {
+                printf("%s", text.c_str());
+                fprintf(ofp, "%s", text.c_str());
+            }
+            else    {
+                printf("%s\n", text.c_str());
+                fprintf(ofp, "%s\n", text.c_str());
+            }
+        }
+
+        fclose(ofp);
+
+    }
     
 }
 
 // Output and log "string : float dimensions"
 void Network::printNum(const string &text, const double &num, const string unit)   {
-    
-    FILE *ofp;
-    ofp = fopen((buildPath + rLog).c_str(),"a");
-    
-    if (round(num) == num)  {
-        printf("%s %i %s\n",text.c_str(),(int) num,unit.c_str());
-        fprintf(ofp,"%s %i %s\n",text.c_str(),(int) num,unit.c_str());
+
+    if (!silence)   {
+
+        FILE *ofp;
+        ofp = fopen((buildPath + rLog).c_str(),"a");
+
+        if (round(num) == num)  {
+            printf("%s %i %s\n",text.c_str(),(int) num,unit.c_str());
+            fprintf(ofp,"%s %i %s\n",text.c_str(),(int) num,unit.c_str());
+        }
+        else if (num < 1e-3)    {
+            printf("%s %.2e %s\n",text.c_str(),num,unit.c_str());
+            fprintf(ofp,"%s %.4e %s\n",text.c_str(),num,unit.c_str());
+        }
+        else {
+            printf("%s %.3f %s\n",text.c_str(),num,unit.c_str());
+            fprintf(ofp,"%s %.5f %s\n",text.c_str(),num,unit.c_str());
+        }
+
+        fclose(ofp);
+
     }
-    else if (num < 1e-3)    {
-        printf("%s %.2e %s\n",text.c_str(),num,unit.c_str());
-        fprintf(ofp,"%s %.4e %s\n",text.c_str(),num,unit.c_str());
-    }
-    else {
-        printf("%s %.3f %s\n",text.c_str(),num,unit.c_str());
-        fprintf(ofp,"%s %.5f %s\n",text.c_str(),num,unit.c_str());
-    }
-    
-    fclose(ofp);
 
 }
 
 // Output and log "string : float dimensions"
 void Network::printStat(const string &text, const vec &n, const string &unit)   {
-    
-    FILE *ofp;
-    ofp = fopen((buildPath + rLog).c_str(),"a");
-    
-    if (mean(n) < 1e-3)    {
-        printf("%s %.2e ± %.4e %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
-        fprintf(ofp,"%s %.4e ± %.4e %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
+
+    if (!silence)   {
+
+        FILE *ofp;
+        ofp = fopen((buildPath + rLog).c_str(),"a");
+
+        if (mean(n) < 1e-3)    {
+            printf("%s %.2e ± %.4e %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
+            fprintf(ofp,"%s %.4e ± %.4e %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
+        }
+        else {
+            printf("%s %.3f ± %.3f %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
+            fprintf(ofp,"%s %.5f ± %.5f %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
+        }
+
+        fclose(ofp);
+
     }
-    else {
-        printf("%s %.3f ± %.3f %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
-        fprintf(ofp,"%s %.5f ± %.5f %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
-    }
     
-    fclose(ofp);
-    
+}
+
+void Network::findBoundingBox() {
+
+    double xmin = cnode.row(0).min();
+    double ymin = cnode.row(1).min();
+    double zmin = cnode.row(2).min();
+
+    if (xmin >= 0.) {cnode.row(0) -= xmin;}
+    else {cnode.row(0) += abs(xmin);}
+
+    if (ymin >= 0.) {cnode.row(1) -= ymin;}
+    else {cnode.row(1) += abs(ymin);}
+
+    if (zmin >= 0.) {cnode.row(2) -= zmin;}
+    else {cnode.row(2) += abs(zmin);}
+
+    alx = cnode.row(0).max();
+    aly = cnode.row(1).max();
+    alz = cnode.row(2).max();
+    if (alz == 0.)  {alz = diam.max();}
+
 }
 
 
@@ -353,7 +386,7 @@ void ascii_output(const string &filename)   {
     
     ofp = fopen(rootname.c_str(),"w");
     
-    // Calculate nodal radii
+    // Calculate nodal r0
     vec n_radii = zeros<vec>(nnod);
     int cntr = 0;
     for (int inod = 0; inod < nnod; inod++) {
