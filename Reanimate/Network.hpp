@@ -25,9 +25,9 @@ namespace reanimate {
         string networkName,networkPath,buildPath,loadPath,rLog;
         bool unknownBCs,phaseseparation;
         int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track,nitmax{};
-        double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.};
+        double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.},tissDensity{},bloodDensity{};
         ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,nodout,nodrank,nk,deadEnds,articPnt;
-        vec diam,rseg,lseg,q,qq,hd,bcprfl,bchd,nodpress,BCflow,BCpress,tau,segpress,elseg,ediam;
+        vec diam,rseg,lseg,q,qq,vel,hd,bcprfl,bchd,nodpress,BCflow,BCpress,tau,segpress,elseg,ediam;
         uvec unknownnod_idx,bcpress_idx;
         imat segnodname,nodnod,nodseg;
         mat cnode,bcp;
@@ -46,7 +46,7 @@ namespace reanimate {
         int readAmira(const string &filename, const string &networkname, bool stubs=false);
         void processAmira(const bool &stubs);
         void dfsBasic(int v, int tag, ivec &track, bool nodeCondition=false, int type=2);
-
+        void doubleDfs(int v, int tag, double val, ivec &track, vec &param, string cond="GT");
         void dfsArtic(int v, int p=-1);
         void findArticulationPoints();
         ivec findDeadends();
@@ -67,6 +67,7 @@ namespace reanimate {
         // Auxiliary functions
         int detect_col(FILE *ifp);
         void initLog();
+        double nodeAverage(const int &inod, const vec &param);
 
         // Print Functions
         void printText(const string &text, const int type=2, const int newline=1);
@@ -76,7 +77,7 @@ namespace reanimate {
         void printHistogram(string filename, mat &data, const field<string> &headers);
         void printRawData(string filename, mat &data, const field<string> &headers);
         void printReducedAmira(const string &filename);
-        void printAmira(const string &filename, const mat &extraData=zeros<mat>(0,0), bool smooth=true);
+        void printAmira(const string &filename, const mat &extraData=zeros<mat>(0,0), bool smooth=true, const char *headers[]={});
         void printNamira(const string &filename, const string &networkname);
 
         Network(); // Constructor
@@ -108,10 +109,10 @@ namespace reanimate {
         double timer;
         ivec visited, tin, low;
 
-        double pointAverage(const int &pnt, const ivec &pntIdx, const vec &param);
         void setup_networkArrays();
         void setup_flowArrays(bool popMatrices=true);
         void setup_estimationArrays();
+        double pointAverage(const int &pnt, const ivec &pntIdx, const vec &param);
 
     private:
 

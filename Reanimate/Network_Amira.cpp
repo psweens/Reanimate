@@ -501,7 +501,7 @@ void Network::printReducedAmira(const string &filename) {
 }
 
 
-void Network::printAmira(const string &filename, const mat &extraData, bool smooth) {
+void Network::printAmira(const string &filename, const mat &extraData, bool smooth, const char *headers[]) {
 
     if (smooth)     {
 
@@ -532,9 +532,17 @@ void Network::printAmira(const string &filename, const mat &extraData, bool smoo
         fprintf(ofp1,"\n EDGE { int NumEdgePoints } @3");
         fprintf(ofp1,"\n POINT { float [3] EdgePointCoordinates } @4");
         fprintf(ofp1,"\n POINT { float Radii } @5");
-        for (int j = 0; j < (int) extraData.n_cols; j++)  {
-            fprintf(ofp1,"\n POINT { float Extra-%i } @%i\n\n",j,6+j);
+        if ((int) extraData.n_cols == 1)   {
+            for (int j = 0; j < (int) extraData.n_cols; j++)  {
+                fprintf(ofp1,"\n POINT { float Extra-%i } @%i",j,6+j);
+            }
         }
+        else {
+            for (int j = 0; j < (int) extraData.n_cols; j++)  {
+                fprintf(ofp1,"\n POINT { float %s } @%i",headers[j],6+j);
+            }
+        }
+        fprintf(ofp1,"\n\n");
 
 
         // Vertex coordinates

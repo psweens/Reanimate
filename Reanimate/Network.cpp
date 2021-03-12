@@ -36,6 +36,9 @@ Network::Network() {
     kp = 0.1;
     ktau = 1.e-4;
 
+    tissDensity = 1027 * 1e-9; // ~Density of tissue, kg / ml (connective tissue)
+    bloodDensity = 1060 * 1e-9; // ~Density of blood, kg / ml
+
     unknownBCs=false;
 
     rLog = "Reanimate_Log.txt";
@@ -63,12 +66,14 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
     printText(networkName, 3);
     printText("Importing network data");
     
-    fscanf(ifp, "%f %f %f", &alx,&aly,&alz); fgets(bb,max,ifp);
-    fscanf(ifp, "%i %i %i", &mxx,&myy,&mzz); fgets(bb,max,ifp);
-    fscanf(ifp, "%f", &lb); fgets(bb,max,ifp);
-    fscanf(ifp, "%f", &maxl); fgets(bb,max,ifp);
-    fscanf(ifp,"%i", &nodsegm);
+    fscanf(ifp, "%lf %lf %lf\n", &alx,&aly,&alz); fgets(bb,max,ifp);
+    fscanf(ifp, "%lli %lli %lli\n", &mxx,&myy,&mzz); fgets(bb,max,ifp);
+    fscanf(ifp, "%lf\n", &lb); fgets(bb,max,ifp);
+    fscanf(ifp, "%lf\n", &maxl); fgets(bb,max,ifp);
+    fscanf(ifp,"%lli", &nodsegm);
     fgets(bb,max,ifp);
+
+    printText("Tissue Dimensions (x,y,z) = " + to_string(int(alx)) + " um x " + to_string(int(aly)) + " um x " + to_string(int(alz)) + " um", 1, 0);
     
     // Number of segments in vessel network
     fscanf(ifp,"%i", &nseg); fgets(bb,max,ifp);

@@ -150,6 +150,37 @@ void Network::dfsBasic(int v, int tag, ivec &track, bool nodeCondition, int type
 
 }
 
+
+void Network::doubleDfs(int v, int tag, double val, ivec &track, vec &param, string cond)  {
+
+    // GT - greater than
+    // ST - smaller than
+
+    int to{};
+    int n = nodtyp(v);
+    double nod = param(v);
+    if (cond == "GT")    {
+        if (val <= nod)  {
+            track(v) = tag;
+            for (int i = 0; i < n; i++)    {
+                to = nodnod(i, v);
+                if (track(to) == -1)   {doubleDfs(to, tag, val, track, param, cond);}
+            }
+        }
+    }
+    else {
+        if (nod <= val)  {
+            track(v) = tag;
+            for (int i = 0; i < n; i++)    {
+                to = nodnod(i, v);
+                if (track(to) == -1)   {doubleDfs(to, tag, val, track, param, cond);}
+            }
+        }
+    }
+
+}
+
+
 void Network::edgeNetwork() {
 
     printText( "Analysing network edges");
@@ -227,5 +258,18 @@ void Network::edgeNetwork() {
     printStat("Length / diameter ratio =", elseg(newIdx)/ediam(newIdx), "um");
 
     nedge = elseg.n_rows;
+
+}
+
+double Network::nodeAverage(const int &inod, const vec &param)    {
+
+    double var{};
+    for (int iseg= 0; iseg < nseg; iseg++)  {
+        if (ista(iseg) == inod || iend(iseg) == inod) {
+            var += param(iseg);
+        }
+    }
+
+    return var /= nodtyp(inod);
 
 }

@@ -62,34 +62,11 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
         networkCopy.splitHD(&Network::fullSolver, hdGraph);
     }
 
-
+    // Map solved flow to original network
     mapFlow(networkCopy);
-    hd(find(deadEnds == 1)).fill(0.0);
-    q(find(deadEnds == 1)).fill(0.0);
 
-
-    // Calculate absolute flow, shear stress and segment pressure
-    q(find(noflow == 1)).fill(0.0);
-    hd(find(noflow == 1)).fill(0.0);
-    qq = abs(q);
-    if (!unknownBCs)    {
-        for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
-
-        for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-            BCpress(inodbc) = nodpress(bcnod(inodbc));
-        }
-        tau = (c % qq)*(gamma/beta);
-    }
-    else    {
-        for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
-        tau = (c % qq);
-    }
-
-    int nnoflow = accu(noflow);
-    if (nnoflow > 0) {
-        printText("No flow detected in "+to_string(nnoflow)+" segments",5);
-        if (phaseseparation) {hd(find(noflow == 1)).fill(0.0);}
-    }
+    // Analyse flow
+    analyseVascularFlow();
 
 }
 
@@ -125,7 +102,7 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
         // Flow solver
         (this->*solver)();
         if (any(q == 0.0))  {printText( "No flow detected",5);
-            vec temp = zeros<vec>(nseg);
+            /*vec temp = zeros<vec>(nseg);
             temp(find(q == 0.0)).fill(1.);
             mat extraD = zeros<mat>(nseg, 1);
             extraD.col(0) = temp;
@@ -150,7 +127,7 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
                         }
                     }
                 }
-            }
+            }*/
 
         }
         if (unknownBCs) {
@@ -371,10 +348,31 @@ void Vasculature::mapFlow(Vasculature &Network) {
             if (Network.segname(iseg) == segname(jseg)) {
                 q(jseg) = Network.q(iseg);
                 hd(jseg) = Network.hd(iseg);
-                tau(jseg) = Network.c(iseg) * abs(q(jseg));
+                tau(jseg) = Network.c(iseg) * abs(Network.q(iseg)) * (gamma/beta);
                 jseg = nseg;
             }
         }
+    }
+
+    hd(find(deadEnds == 1)).fill(0.0);
+    q(find(deadEnds == 1)).fill(0.0);
+
+    // Calculate absolute flow, shear stress and segment pressure
+    q(find(noflow == 1)).fill(0.0);
+    hd(find(noflow == 1)).fill(0.0);
+    qq = abs(q);
+    if (!unknownBCs)    {
+        for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
+        for (int inodbc = 0; inodbc < nnodbc; inodbc++) {BCpress(inodbc) = nodpress(bcnod(inodbc));}
+    }
+    else    {
+        for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
+    }
+
+    int nnoflow = accu(noflow);
+    if (nnoflow > 0) {
+        printText("No flow detected in "+to_string(nnoflow)+" segments",5);
+        if (phaseseparation) {hd(find(noflow == 1)).fill(0.0);}
     }
 
 }
