@@ -26,6 +26,7 @@ void Network::printNetwork(const string& filename, bool resetDomain)    {
 
     }
 
+
     ofp = fopen((buildPath + filename).c_str(),"w");
     fprintf(ofp,"%s\n",networkName.c_str());
     fprintf(ofp,"%f %f %f  Box dimensions in microns \n",alx-minx,aly-miny,alz-minz);

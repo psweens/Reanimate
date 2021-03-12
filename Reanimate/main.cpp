@@ -1,6 +1,8 @@
 #include "Network.hpp"
 #include "spatGraph.hpp"
 #include "Vasculature.hpp"
+#include "MicroCell.hpp"
+#include "DiscreteContinuum.hpp"
 #include <sys/resource.h>
 
 using namespace reanimate;
@@ -8,37 +10,42 @@ using namespace std;
 
 int main(int argc, char** argv) {
 
-    // Directory setup
-    Vasculature vnet;
-    vnet.setStackSize(); // Prevent stack overflow when running recursive functions (for large networks)
-    vnet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
-    vnet.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
-    vnet.setBuildPath(); // Create build directory / delete contents
+    // Generate discrete flow solution
+    DiscreteContinuum hybrid;
+    hybrid.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Build_Data/";
+    hybrid.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Load_Data/";
+    hybrid.discreteNet.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Build_Data/";
+    hybrid.discreteNet.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Load_Data/";
+    hybrid.discreteNet.setBuildPath(true);
+    hybrid.discreteNet.loadNetwork("1Network.dat");
+    hybrid.discreteNet.bloodFlow(true);
+    hybrid.discreteNet.pictureNetwork("Network_Pressure.ps",hybrid.discreteNet.segpress);
 
-    // Load network file
-    vnet.loadNetwork("cpNetwork.txt");
+    // Generate spatial graph
+    hybrid.graph.generate(hybrid.discreteNet, true);
 
+    // Generate micro-cell
+    hybrid.cell.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Build_Data/";
+    hybrid.cell.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Load_Data/";
+    hybrid.cell.setBuildPath(false); // Create build directory / delete contents
 
-    mat extraD = zeros<mat>(vnet.getNseg(), 1);
-    vnet.printAmira("amiraNetwork.am", extraD);
-    vnet.hd.fill(0.4);
-    vnet.bchd.fill(0.4);
+    hybrid.cell.setDiamDistrib(hybrid.discreteNet.diam(find(hybrid.discreteNet.vesstyp == 2)));
+    hybrid.cell.setLengthDistrib(hybrid.discreteNet.lseg(find(hybrid.discreteNet.vesstyp == 2)));
+    hybrid.cell.rotationAngle = 1e-3;
+    hybrid.cell.computeConductivity("crossCell2D");
 
+    // Run vessel classification
+    imat inOutlets = zeros<imat>(3,2);
+    inOutlets(0,0) = 830;
+    inOutlets(0,1) = 1;
+    inOutlets(1,0) = 825;
+    inOutlets(1,1) = 2;
+    inOutlets(2,0) = 824;
+    inOutlets(2,1) = 1;
+    //hybrid.graph.classifyNetwork(inOutlets, hybrid.discreteNet.vesstyp);
+    hybrid.graph.analyseTopology(inOutlets);
 
-    // Solving for blood flow
-    //vnet.loadDeadEnds = true;
-    vnet.bloodFlow(true, true, false, false);
-
-    extraD = zeros<mat>(vnet.getNseg(), 1);
-    extraD.col(0) = vnet.segpress;
-    vnet.printAmira("amiraPressure.am", extraD);
-    extraD.col(0) = vnet.hd;
-    vnet.printAmira("amiraHD.am", extraD);
-
-    vnet.pictureNetwork("NetworkDiameters.ps", vnet.diam);
-    vnet.pictureNetwork("NetworkPressure.ps", vnet.segpress);
-    vnet.pictureNetwork("NetworkFlow.ps", vnet.qq);
-    vnet.pictureNetwork("NetworkHaematocrit.ps", vnet.hd);
-    vnet.printNetwork("solved_NetworkBloodFlow.txt");
+    // Run discrete-continuum model
+    hybrid.runHybrid();
 
 }

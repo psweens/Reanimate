@@ -22,6 +22,7 @@ void spatGraph::setup_graphArrays() {
     geometry = zeros<ivec>(nseg);
     isBridge = zeros<ivec>(nseg);
     isBridgehead = zeros<ivec>(nseg);
+    subGraphs = zeros<ivec>(nseg);
 
     nodout = zeros<ivec>(nnod);
     nodrank = zeros<ivec>(nnod);
@@ -41,7 +42,7 @@ void spatGraph::setup_graphArrays() {
 
 
 //template <class CallNetwork>
-void spatGraph::generate(Network &network, bool print, bool noflow)  {
+void spatGraph::generate(Network &network, bool print)  {
 
     buildPath = network.buildPath;
     loadPath = network.loadPath;
@@ -61,9 +62,9 @@ void spatGraph::generate(Network &network, bool print, bool noflow)  {
 
 
     // Finding edge vertices
-    uvec idx{};
     ivec flagLoop = zeros<ivec>(nseg);
     segnodname = zeros<imat>(2,nseg);
+    ngraphTag = zeros<ivec>(nnod);
     for (int jseg = 0; jseg < nseg; jseg++) {
         nodtyp.zeros();
         for (int iseg = 0; iseg < network.getNseg(); iseg++) {
@@ -72,16 +73,9 @@ void spatGraph::generate(Network &network, bool print, bool noflow)  {
                 nodtyp(network.iend(iseg)) += 1;
             }
         }
-        int minNtyp = min(nodtyp(find(nodtyp)));
-        if (minNtyp == 1)   {
-            idx = find(nodtyp == 1);
+        if (min(nodtyp(find(nodtyp))) == 1)   {
+            uvec idx = find(nodtyp == 1);
             segnodname(0, jseg) = network.nodname(idx(1));
-            segnodname(1, jseg) = network.nodname(idx(0));
-        }
-        else {
-            // Looping vessels
-            idx = find(nodtyp == minNtyp);
-            segnodname(0, jseg) = network.nodname(idx(0));
             segnodname(1, jseg) = network.nodname(idx(0));
         }
     }
@@ -123,24 +117,23 @@ void spatGraph::generate(Network &network, bool print, bool noflow)  {
     lb = network.lb;
     maxl = network.maxl;
 
+
     setup_graphArrays();
     setup_networkArrays();
     analyse_network(true, print);
     printNetwork("spatialGraph.txt");
 
-    if (!noflow) {
-        int cntr = 0;
-        for (int inodbc = 0; inodbc < network.getNnodbc(); inodbc++)    {
-            if (network.bcprfl(inodbc) == 0.0 && network.bctyp(inodbc) == 1)    {
-                cntr += 1;
-            }
+    int cntr = 0;
+    for (int inodbc = 0; inodbc < network.getNnodbc(); inodbc++)    {
+        if (network.bcprfl(inodbc) == 0.0 && network.bctyp(inodbc) == 1)    {
+            cntr += 1;
         }
-        cntr -= network.getNnodbc();
-        if (nnodbc != abs(cntr)) {printText("Incorrect number of boundary nodes. Target no. = "+to_string(abs(cntr)),5);}
-        for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-            uvec idx = find(bcnodname(inodbc) == network.bcnodname);
-            if (idx.n_elem == 0)    {printText("New boundary node detected",5);}
-        }
+    }
+    cntr -= network.getNnodbc();
+    if (nnodbc != abs(cntr)) {printText("Incorrect number of boundary nodes. Target no. = "+to_string(abs(cntr)),5);}
+    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+        uvec idx = find(bcnodname(inodbc) == network.bcnodname);
+        if (idx.n_elem == 0)    {printText("New boundary node detected",5);}
     }
 
     for (int iseg = 0; iseg < nseg; iseg++) {
@@ -176,11 +169,12 @@ void spatGraph::linkEdges()  {
 
 void spatGraph::defineTrunk()   {
 
-    cout<<"Running network topology classifier ..."<<endl;
+    printText("Vessel Classification Module", 3);
 
     nTrees = 0;
-    cout<<"How many feeding/draining vessels does the network contain? ";
+    printText("How many feeding/draining vessels does the network contain?",0,1);
     cin >> nTrees;
+    printNum("No. of trees =", nTrees);
 
     int classify = 0;
     int nodInput = 0;
@@ -188,8 +182,9 @@ void spatGraph::defineTrunk()   {
     for (int ives = 0; ives < nTrees; ives++) {
 
         nodnameRewind:;
-        cout<<"Please enter node name: ";
+        printText("Please enter node name",0,0);
         cin>>nodInput;
+        printNum("Node name =", nodInput);
         // Node name checker
         int nodCheck = 0;
         int nodindx = 0;
@@ -200,11 +195,12 @@ void spatGraph::defineTrunk()   {
             }
         }
         if (nodCheck == 0)  {
-            cout<<"*** Error: Non-existent nodname name ***"<<endl;
+            printText("Non-existent nodname name",4);
             goto nodnameRewind;
         }
-        cout<<"Feeding (1) or draining (2) vessel? ";
+        printText("Feeding (1) or draining (2) vessel?",0,0);
         cin>>classify;
+        printNum("Type =", classify);
         if (classify == 1)  {
             narterioles += 1;
         }
@@ -233,6 +229,9 @@ void spatGraph::defineTrunk()   {
 
 void spatGraph::analyseTopology(imat predefinedInput)   {
 
+    printText("Vessel Classification Module", 3);
+    printText("Loading network trunks");
+
     // predefinedInput: col(0) nodname, col(1) arteriole/venule; rows() trunks
     nTrees = predefinedInput.n_rows;
     InOutlets = zeros<imat>(nTrees,4);
@@ -260,7 +259,8 @@ void spatGraph::analyseTopology(imat predefinedInput)   {
 
 void spatGraph::loadTrunks(const string &filepath) {
 
-    cout<<"Loading network trunks ..."<<endl;
+    printText("Vessel Classification Module", 3);
+    printText("Loading network trunks");
 
     int n{}, max{200};
     char bb[200];

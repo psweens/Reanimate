@@ -15,9 +15,9 @@ namespace reanimate {
 
         int nTrees{},narterioles{},nvenules{};
         double Dr{},Dmin{};
-        ivec geometry,isBridge,isBridgehead;//visited,articPnt,connectedComp,connectedVert;
+        ivec geometry,isBridge,isBridgehead,flagTree;
         imat InOutlets;
-        void generate(Network &network, bool print=false, bool noflow=false);
+        void generate(Network &network, bool print=false);
         void defineTrunk();
         void loadTrunks(const string &filepath);
         void analyseTopology(imat predefinedInput=NULL);
@@ -27,6 +27,8 @@ namespace reanimate {
         void removeNewBoundaries(ivec storeBCnodname, bool print=false);
         void removeNoflowBoundaries(ivec &bnodes, bool print=false);
         void linkEdges();
+        void classifyNetwork(imat &InOutlets, ivec &geometry);
+        void mapClassification(Network &net);
 
         ivec findParallelEdges();
         ivec findParallelLoops(ivec &x);
@@ -37,11 +39,10 @@ namespace reanimate {
     private:
 
         //int timer{};
-        ivec Pa,Rs,feedNod,dFeedNod,drainNod,flagTree,daughter,Rn,dGraphs;//tin,low,;
+        ivec Pa,Rs,feedNod,dFeedNod,drainNod,daughter,Rn,dGraphs;//tin,low,;
         sp_mat segnod;
 
         void setup_graphArrays();
-        void classifyNetwork(imat &InOutlets, ivec &geometry);
         void internalClassificationLoop(const int &init_seg, const int &classify, ivec &geometry, const int &algo_2, const int &tree, ivec &fTree);
 
     };
