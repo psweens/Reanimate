@@ -12,7 +12,6 @@ void Network::setup_networkArrays() {
     sgraphTag = zeros<ivec>(nseg);
     ngraphTag = zeros<ivec>(nnod);
 
-    rseg = zeros<vec>(nseg);
     nodtyp = zeros<ivec>(nnod);
     bcnod = zeros<ivec>(nnodbc);
     articPnt = zeros<ivec>(nnod);

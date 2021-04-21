@@ -22,58 +22,17 @@ void Network::analyse_network(bool graph, bool print)   {
 
     // Setup nodtyp, nodseg and nodnod
     indexNodeConnectivity();
-
-    for (int inodbc = 0; inodbc < nnodbc; inodbc++){
-        // Search for node corresponding to this node name
-        for (int inod = 0; inod < nnod; inod++) {
-            if(nodname(inod) == bcnodname(inodbc))  {
-                bcnod(inodbc) = inod;
-                if(nodtyp(inod) != 1)   {
-                    printText( "Boundary node " + to_string(nodname(inod)) + " is not a 1-segment node",4);
-                }
-                goto foundit2;
-            }
-        }
-        printText("No matching boundary node found for nodname " + to_string(bcnodname(inodbc)) + ", " + to_string(inodbc), 4);
-        foundit2:;
-    }
-
+    indexBCconnectivity();
 
     // Start(k,iseg) = coordinates of starting point of segment iseg
     // End(k,iseg) = coordinates of ending point of segment iseg
     computeLseg = 1;
     qq = abs(q);
-    vec ss = zeros<vec>(3);
-    mat Start = zeros<mat>(3,nseg);
-    mat End = zeros<mat>(3,nseg);
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        rseg(iseg) = diam(iseg) / 2.0;
-        for (int k = 0; k < 3; k++){
-            Start(k,iseg) = cnode(k,ista(iseg));
-            End(k,iseg) = cnode(k,iend(iseg));
-            ss(k) = End(k,iseg) - Start(k,iseg);
-        }
-        if (computeLseg == 1)  {
-            lseg(iseg) = sqrt(pow(ss(0),2) + pow(ss(1),2) + pow(ss(2),2));
-        }
-    }
+    rseg = diam / 2.0;
+    if (computeLseg == 1)   {findLengths();}
 
     BCgeo = zeros<ivec>(nnodbc);
-    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-        for (int iseg = 0; iseg < nseg; iseg++) {
-            if (bcnod(inodbc) == ista(iseg) || bcnod(inodbc) == iend(iseg)) {
-                if (vesstyp(iseg) == 1)    {
-                    BCgeo(inodbc) = 1;
-                }
-                else if (vesstyp(iseg) == 2)   {
-                    BCgeo(inodbc) = 2;
-                }
-                else {
-                    BCgeo(inodbc) = 3;
-                }
-            }
-        }
-    }
+    analyseBoundaryType();
 
 }
 
@@ -95,7 +54,7 @@ void Network::indexSegmentConnectivity() {
                     }
                 }
             }
-            printText( "No matching node found for segname " + to_string(segname(iseg)),4);
+            printText("No matching node found for segname " + to_string(segname(iseg)),4);
             foundit:;
         }
     }
@@ -123,6 +82,65 @@ void Network::indexNodeConnectivity()   {
         nodnod(nodtyp(inod1) - 1,inod1) = inod2;
         nodnod(nodtyp(inod2) - 1,inod2) = inod1;
     }
+
+}
+
+void Network::indexBCconnectivity() {
+
+    for (int inodbc = 0; inodbc < nnodbc; inodbc++){
+        // Search for node corresponding to this node name
+        for (int inod = 0; inod < nnod; inod++) {
+            if(nodname(inod) == bcnodname(inodbc))  {
+                bcnod(inodbc) = inod;
+                if(nodtyp(inod) != 1)   {
+                    printText( "Boundary node " + to_string(nodname(inod)) + " is not a 1-segment node",4);
+                }
+                goto foundit2;
+            }
+        }
+        printText("No matching boundary node found for nodname " + to_string(bcnodname(inodbc)) + ", " + to_string(inodbc), 4);
+        foundit2:;
+    }
+
+}
+
+void Network::findLengths() {
+
+    vec ss = zeros<vec>(3);
+    mat Start = zeros<mat>(3,nseg);
+    mat End = zeros<mat>(3,nseg);
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        for (int k = 0; k < 3; k++){
+            Start(k,iseg) = cnode(k,ista(iseg));
+            End(k,iseg) = cnode(k,iend(iseg));
+            ss(k) = End(k,iseg) - Start(k,iseg);
+        }
+        if (computeLseg == 1)  {
+            lseg(iseg) = sqrt(pow(ss(0),2) + pow(ss(1),2) + pow(ss(2),2));
+        }
+    }
+
+}
+
+
+void Network::analyseBoundaryType()  {
+
+    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+        if (vesstyp(nodseg(0,bcnod(inodbc))) == 1)  {BCgeo(inodbc) = 1;}
+        else if (vesstyp(nodseg(0,bcnod(inodbc))) == 2)  {BCgeo(inodbc) = 2;}
+        else if (vesstyp(nodseg(0,bcnod(inodbc))) == 3)  {BCgeo(inodbc) = 3;}
+        else {printText( "Boundary node "+to_string(bcnodname(inodbc))+" not classified",4);}
+    }
+
+}
+
+
+void Network::scaleNetwork(double sfactor)    {
+
+    diam *= sfactor;
+    rseg *= sfactor;
+    lseg *= sfactor;
+    cnode *= sfactor;
 
 }
 

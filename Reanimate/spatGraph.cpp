@@ -169,20 +169,22 @@ void spatGraph::linkEdges()  {
 
 void spatGraph::defineTrunk()   {
 
-    cout<<"Running network topology classifier ..."<<endl;
+    printText("Vessel Classification Module", 3);
 
     nTrees = 0;
-    cout<<"How many feeding/draining vessels does the network contain? ";
+    printText("How many feeding/draining vessels does the network contain?",0,1);
     cin >> nTrees;
+    printNum("No. of trees =", nTrees);
 
     int classify = 0;
     int nodInput = 0;
-    InOutlets = zeros<imat>(nTrees,4);
+    InOutlets = zeros<imat>(nTrees,5);
     for (int ives = 0; ives < nTrees; ives++) {
 
         nodnameRewind:;
-        cout<<"Please enter node name: ";
+        printText("Please enter node name",0,0);
         cin>>nodInput;
+        printNum("Node name =", nodInput);
         // Node name checker
         int nodCheck = 0;
         int nodindx = 0;
@@ -193,11 +195,12 @@ void spatGraph::defineTrunk()   {
             }
         }
         if (nodCheck == 0)  {
-            cout<<"*** Error: Non-existent nodname name ***"<<endl;
+            printText("Non-existent nodname name",4);
             goto nodnameRewind;
         }
-        cout<<"Feeding (1) or draining (2) vessel? ";
+        printText("Feeding (1) or draining (2) vessel?",0,0);
         cin>>classify;
+        printNum("Type =", classify);
         if (classify == 1)  {
             narterioles += 1;
         }
@@ -210,25 +213,36 @@ void spatGraph::defineTrunk()   {
                 InOutlets(ives,1) = classify;
                 InOutlets(ives,2) = diam(iseg);
                 InOutlets(ives,3) = nodindx;
+                InOutlets(ives,4) = nodInput;
             }
             else if (nodname(iend(iseg)) == nodInput)   {
                 InOutlets(ives,0) = iseg;
                 InOutlets(ives,1) = classify;
                 InOutlets(ives,2) = diam(iseg);
                 InOutlets(ives,3) = nodindx;
+                InOutlets(ives,4) = nodInput;
             }
         }
     }
 
     classifyNetwork(InOutlets, geometry);
+    uvec art = find(geometry == 1);
+    uvec cap = find(geometry == 2);
+    uvec ven = find(geometry == 3);
+    printNum("Arterioles (%) =", 100*double(art.n_elem) / double(nseg));
+    printNum("Capillaries (%) =", 100*double(cap.n_elem) / double(nseg));
+    printNum("Venules (%) =", 100*double(ven.n_elem) / double(nseg));
 
 }
 
 void spatGraph::analyseTopology(imat predefinedInput)   {
 
+    printText("Vessel Classification Module", 3);
+    printText("Loading network trunks");
+
     // predefinedInput: col(0) nodname, col(1) arteriole/venule; rows() trunks
     nTrees = predefinedInput.n_rows;
-    InOutlets = zeros<imat>(nTrees,4);
+    InOutlets = zeros<imat>(nTrees,5);
     for (int i = 0; i < nTrees; i++)    {
         for (int iseg = 0; iseg < nseg; iseg++)    {
             if (nodname(ista(iseg)) == predefinedInput(i,0)) {
@@ -236,24 +250,34 @@ void spatGraph::analyseTopology(imat predefinedInput)   {
                 InOutlets(i,1) = predefinedInput(i,1);
                 InOutlets(i,2) = diam(iseg);
                 InOutlets(i,3) = ista(iseg);
+                InOutlets(i,4) = predefinedInput(i,0);
             }
             else if (nodname(iend(iseg)) == predefinedInput(i,0))   {
                 InOutlets(i,0) = iseg;
                 InOutlets(i,1) = predefinedInput(i,1);
                 InOutlets(i,2) = diam(iseg);
                 InOutlets(i,3) = iend(iseg);
+                InOutlets(i,4) = predefinedInput(i,0);
             }
         }
     }
 
-
     classifyNetwork(InOutlets, geometry);
+
+    uvec art = find(geometry == 1);
+    uvec cap = find(geometry == 2);
+    uvec ven = find(geometry == 3);
+    printNum("Arterioles (%) =", 100*double(art.n_elem) / double(nseg));
+    printNum("Capillaries (%) =", 100*double(cap.n_elem) / double(nseg));
+    printNum("Venules (%) =", 100*double(ven.n_elem) / double(nseg));
+    vesstyp = geometry;
 
 }
 
 void spatGraph::loadTrunks(const string &filepath) {
 
-    cout<<"Loading network trunks ..."<<endl;
+    printText("Vessel Classification Module", 3);
+    printText("Loading network trunks");
 
     int n{}, max{200};
     char bb[200];

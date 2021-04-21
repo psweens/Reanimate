@@ -563,7 +563,7 @@ void Network::printReducedAmira(const string &filename) {
         fprintf(ofp1,"%.15e %.15e %.15e\n",cnode(0,iend(iseg)),cnode(1,iend(iseg)),cnode(2,iend(iseg)));
     }
 
-    // Segment radii
+    // Segment r0
     fprintf(ofp1,"\n@5\n");
     for(int iseg = 0; iseg < nseg; iseg++)    {
         fprintf(ofp1,"%.15e\n",rseg(iseg));
@@ -640,7 +640,7 @@ void Network::printAmira(const string &filename, const mat &extraData, bool smoo
             fprintf(ofp1,"%.15e %.15e %.15e\n",cnode(0,iend(iseg)),cnode(1,iend(iseg)),cnode(2,iend(iseg)));
         }
 
-        // Segment radii
+        // Segment r0
         fprintf(ofp1,"\n@5\n");
         for(int iseg = 0; iseg < nseg; iseg++)    {
             fprintf(ofp1,"%.15e\n",rseg(iseg));

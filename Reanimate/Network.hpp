@@ -23,34 +23,43 @@ namespace reanimate {
     public:
 
         string networkName,networkPath,buildPath,loadPath,rLog;
-        bool unknownBCs,phaseseparation;
+        bool unknownBCs,phaseseparation,silence;
         int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track,nitmax{};
-        double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.};
-        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt;
+        double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.},constvisc{},consthd{};
+        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,flagTree,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt;
         vec diam,rseg,lseg,q,qq,hd,bcprfl,bchd,nodpress,BCflow,BCpress,tau,segpress,elseg,ediam;
         uvec unknownnod_idx,bcpress_idx;
         imat segnodname,nodnod,nodseg;
         mat cnode,bcp;
 
-        void setBuildPath();
+        virtual double evalTissPress(vec &x) {return 0.;}
+        virtual double evalTissVel(vec &x) {return 0.;}
+
+        void setBuildPath(bool deleteFiles=true);
         void loadNetwork(const string &filename, const bool directFromAmira=false);
         void analyse_network(bool graph = false, bool print = true);
         void indexSegmentConnectivity();
         void indexNodeConnectivity();
+        void indexBCconnectivity();
+        void findLengths();
+        void analyseBoundaryType();
+        void scaleNetwork(double sfactor);
         void subNetwork(ivec &index, bool graph = false, bool print = true);
         void edgeNetwork();
         void pictureNetwork(const string &filename, vec vector, bool logdist = false, int nl=20, bool nodes=false, bool segs=false);
         void fullSolver();
         void estimationSolver();
         void putrank(Network &sGraph);
+        void computeBoundaryFlow();
         int readAmira(const string &filename, const string &networkname, bool stubs=false);
         void processAmira(const bool &stubs);
         void dfsBasic(int v, int tag, ivec &track, bool nodeCondition=false, int type=2);
-
         void dfsArtic(int v, int p=-1);
         void findArticulationPoints();
         ivec findDeadends();
         void removeNewBC(ivec storeBCnodname, bool print=false, bool graph=false);
+        void setup_networkArrays();
+        void setup_flowArrays(bool popMatrices=true);
 
 
         // 'Getter' functions
@@ -64,9 +73,17 @@ namespace reanimate {
         void setNnodbc(int nnodbc);
         void setStackSize(int stackSize=16*1024*1024);
 
+        // Math functions
+        double eucDistance(vec &x, vec &y);
+        double SPHI(int n, double &x);
+        double SPHK(int n, double &x);
+        vec lognormal(double &mean, double &SD, int &nseg);
+        mat eulerRotation(const vec &c, const vec &d);
+
         // Auxiliary functions
         int detect_col(FILE *ifp);
         void initLog();
+        void findBoundingBox();
 
         // Print Functions
         void printText(const string &text, const int type=2, const int newline=1);
@@ -78,6 +95,8 @@ namespace reanimate {
         void printReducedAmira(const string &filename);
         void printAmira(const string &filename, const mat &extraData=zeros<mat>(0,0), bool smooth=true);
         void printNamira(const string &filename, const string &networkname);
+        void plotContour(const string filename, Network &graph, double maxval, double minval, bool vector=false, bool overlay=true, const int xgrid=1e2, const int ygrid=1e2, const int NL=10);
+        void shadeContour(FILE *ofp, const int &m, const int &n, double &scalefac, int &nl, const double pint, const double &xmin, const double &xmax, const double &ymin, const double &ymax, const vec &cl, const mat &zv);
 
         Network(); // Constructor
         ~Network(); // Destructor
@@ -99,7 +118,7 @@ namespace reanimate {
 
         // Flow parameters
         int estimationarraysize{},nIBnod{},nunknown{};
-        double constvisc{},consthd{},mcv{},hdtol{},qtol{},ktau{},oldktau{},kp{},targetpress{};
+        double mcv{},hdtol{},qtol{},ktau{},oldktau{},kp{},targetpress{};
         ivec unknownnod,storeBCtyp;
         vec conductance,c,qold,hdold,flowsign,oldFlowsign,tau0,oldTau,Qo,B,p0,storeBC,storeBChd,storeHD,oldHd,oldNodpress,oldq;
         sp_mat M,L,K,A,H1,H2,W;
@@ -108,8 +127,6 @@ namespace reanimate {
         double timer;
         ivec visited, tin, low;
 
-        void setup_networkArrays();
-        void setup_flowArrays(bool popMatrices=true);
         void setup_estimationArrays();
 
     private:

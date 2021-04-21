@@ -4,9 +4,9 @@ using namespace reanimate;
 
 void spatGraph::classifyNetwork(imat &InOutlets, ivec &geometry)  {
 
-    cout<<"Running topological network classification ..."<<endl;
-    cout<<"Dmin = "<<Dmin<<endl;
-    cout<<"Dr = "<<Dr<<endl;
+    printText("Classifying vasculature based on network topology");
+    printNum("Dmin =", Dmin);
+    printNum("Dr =", Dr);
 
     Pa = zeros<ivec>(nseg);
     Rs = zeros<ivec>(nseg);
@@ -23,9 +23,8 @@ void spatGraph::classifyNetwork(imat &InOutlets, ivec &geometry)  {
     flagTree.fill(-1);
 
     // Ordering in terms of feeding/draining vessel diameters (descending)
-    int nio = (int) InOutlets.n_rows;
-    for(int m = 0; m < nio; m++)    {
-        for(int j = 0; j < nio; j++)    {
+    for(int m = 0; m < (int) InOutlets.n_rows; m++)    {
+        for(int j = 0; j < (int) InOutlets.n_rows; j++)    {
             if(InOutlets(m,2) > InOutlets(j,2))   {
                 int tmp1 = (int) InOutlets(m,0);
                 InOutlets(m,0) = InOutlets(j,0);
@@ -36,6 +35,12 @@ void spatGraph::classifyNetwork(imat &InOutlets, ivec &geometry)  {
                 double tmp3 = InOutlets(m,2);
                 InOutlets(m,2) = InOutlets(j,2);
                 InOutlets(j,2) = tmp3;
+                double tmp4 = InOutlets(m,3);
+                InOutlets(m,3) = InOutlets(j,3);
+                InOutlets(j,3) = tmp4;
+                double tmp5 = InOutlets(m,4);
+                InOutlets(m,4) = InOutlets(j,4);
+                InOutlets(j,4) = tmp5;
             }
         }
     }
@@ -44,7 +49,7 @@ void spatGraph::classifyNetwork(imat &InOutlets, ivec &geometry)  {
     // Beginning with the largest-diameter starting segment, Algorithm 1 is implemented where every parent segment has a diameter >= Dmin.
     // Daughter segments with D < Dmin are added to Rs but their end nodes aren't labelled.
     // These steps are repeated for all the remaining starting segments.
-    for (int iTree = 0; iTree < nio; iTree++)  {
+    for (int iTree = 0; iTree < (int) InOutlets.n_rows; iTree++)  {
 
         int init_seg = (int) InOutlets(iTree,0);
         Rs(init_seg) = 1;   // Flag as a reached segment
@@ -200,7 +205,7 @@ void spatGraph::classifyNetwork(imat &InOutlets, ivec &geometry)  {
     }
 
     loop:;
-    for (int jTree = 0; jTree < nio; jTree++)   {
+    for (int jTree = 0; jTree < (int) InOutlets.n_rows; jTree++)   {
         internalClassificationLoop(0, (int) InOutlets(jTree,1), geometry, 1, jTree, flagTree);
     }
 
@@ -253,8 +258,8 @@ void spatGraph::internalClassificationLoop(const int &init_seg, const int &class
             feedNod(init_seg) = 2;
         }
         else    {
-            cout<<"\t\t\t*** Error: Input not a boundary node ***"<<endl;
-            cout<<"\t\t\t...Exiting algorithm"<<endl;
+            printText("Input not a boundary node",4);
+            printText("Exciting classifier");
             goto exit;
         }
     }
@@ -439,4 +444,44 @@ void spatGraph::internalClassificationLoop(const int &init_seg, const int &class
 
 
     exit:;
+}
+
+
+void spatGraph::mapClassification(Network &net, bool fullgraph) {
+
+    // Vessel classification
+    net.flagTree = zeros<ivec>(net.getNseg());
+    if (fullgraph)  {
+        uvec idx;
+        for (int iseg = 0; iseg < nseg; iseg++) {
+            idx = find(segname(iseg) == net.edgeLabels);
+            net.vesstyp(idx).fill(geometry(iseg));
+            net.flagTree(idx).fill(flagTree(iseg));
+        }
+    }
+    else {
+        net.vesstyp.ones() * 2;
+        flagTree.zeros();
+        ivec tag = -ones<ivec>(net.getNnod());
+        for (int i = 0; i < nTrees; i++)    {
+            int nod = InOutlets(i,4);
+            uvec idx = find(net.nodname == nod);
+            net.dfsBasic(idx(0), 1, tag);
+            idx = find(tag == 1);
+            for (int iseg = 0; iseg < net.getNseg(); iseg++)    {
+                for (int inod = 0; inod < (int) idx.n_elem; inod++) {
+                    if (net.ista(iseg) == idx(inod) || net.iend(iseg) == idx(inod)) {
+                        net.flagTree(iseg) = nod;
+                        if (InOutlets(i,1) == 1)    {net.vesstyp(iseg) = 1;}
+                        else {net.vesstyp(iseg) = 3;}
+                    }
+                }
+            }
+            tag.fill(-1);
+        }
+    }
+
+    // Boundary geometry
+    net.analyseBoundaryType();
+
 }
