@@ -266,7 +266,7 @@ void spatGraph::loadTrunks(const string &filepath) {
     char bb[200];
 
     FILE *data;
-    data = fopen(filepath.c_str(),"r");
+    data = fopen((loadPath + filepath).c_str(),"r");
     fscanf(data,"%i", &n); fgets(bb,max,data);
     fgets(bb,max,data);
 
