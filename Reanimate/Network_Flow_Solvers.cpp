@@ -41,6 +41,7 @@ void Network::fullSolver()    {
     if (!phaseseparation)   {printText("Solving linear system",2, 0);}
     nodpress = spsolve(K,Qo, "superlu", settings)/alpha;
     q = (M * nodpress)*(alpha/gamma);
+    tau = c % abs(q) * (gamma/beta);
 
 }
 

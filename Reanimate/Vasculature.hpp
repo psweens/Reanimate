@@ -18,6 +18,8 @@ namespace reanimate {
         template <typename Call>
         void splitHD(Call solver, spatGraph &hdGraph);
         void bloodFlow(bool varviscosity=true, bool phaseseparation=false, bool memoryeffects=false, bool updateBoundaryHD=false);
+        void printSummary();
+        void printVisuals();
 
         Vasculature();
         ~Vasculature();
@@ -41,6 +43,7 @@ namespace reanimate {
         vec computeFlowError(double &relax);
         void relaxBoundaryHD();
         void mapFlow(Vasculature &Network);
+        void analyseVascularFlow();
 
     };
 

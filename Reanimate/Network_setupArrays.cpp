@@ -9,8 +9,6 @@ void Network::setup_networkArrays() {
     nodout = zeros<ivec>(nnod);
     nodrank = zeros<ivec>(nnod);
     nk = zeros<ivec>(nnod);
-    sgraphTag = zeros<ivec>(nseg);
-    ngraphTag = zeros<ivec>(nnod);
 
     nodtyp = zeros<ivec>(nnod);
     bcnod = zeros<ivec>(nnodbc);
@@ -27,8 +25,6 @@ void Network::setup_flowArrays(bool popMatrices)    {
     conductance = zeros<vec>(nseg);
     segpress = zeros<vec>(nseg);
     tau = zeros<vec>(nseg);
-    deadends = zeros<ivec>(nseg);
-    subGraphs = zeros<ivec>(nseg);
     BCflow = zeros<vec>(nnodbc);
     BCpress = zeros<vec>(nnodbc);
     Qo = zeros<vec>(nnod);

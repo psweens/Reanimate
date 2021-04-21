@@ -17,7 +17,6 @@ namespace reanimate {
         double Dr{},Dmin{};
         ivec geometry,isBridge,isBridgehead,flagTree;
         imat InOutlets;
-
         void generate(Network &network, bool print=false);
         void defineTrunk();
         void loadTrunks(const string &filepath);

@@ -1,9 +1,13 @@
 #include "Network.hpp"
 #include "spatGraph.hpp"
 #include "Vasculature.hpp"
+
+#include "omp.h"
+
 #include "MicroCell.hpp"
 #include "DiscreteContinuum.hpp"
 #include <sys/resource.h>
+
 
 using namespace reanimate;
 using namespace std;

@@ -6,7 +6,6 @@ void Network::putrank(Network &sGraph)  {
 
     //printText("Calculating flow ranking",2, 0);
 
-    flag = zeros<ivec>(nseg);
     sGraph.q.zeros();
     uvec idx, node1, node2;
     for (int iseg = 0; iseg < sGraph.getNseg(); iseg++) {
