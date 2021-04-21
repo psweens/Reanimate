@@ -130,7 +130,7 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
                 }
             }*/
 
-        }*/
+        }
         if (unknownBCs) {
             // To allow tau0 to update flow directions rather than magnitude
             flowsign = sign(q);
