@@ -1,62 +1,62 @@
 #include "Network.hpp"
 #include "spatGraph.hpp"
 #include "Vasculature.hpp"
+
 #include "omp.h"
+
+#include "MicroCell.hpp"
+#include "DiscreteContinuum.hpp"
+#include <sys/resource.h>
+
 
 using namespace reanimate;
 using namespace std;
 
 int main(int argc, char** argv) {
 
-    Vasculature vnet;
-    vnet.setStackSize(); // Prevent stack overflow when running recursive functions (for large networks)
-    //vnet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data_LS3_" + to_string(file) + "/";
-    vnet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
-    vnet.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
-    vnet.setBuildPath(); // Create build directory / delete contents
+    // Generate discrete flow solution
+    DiscreteContinuum hybrid;
+    hybrid.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Build_Data/";
+    hybrid.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Load_Data/";
+    hybrid.discreteNet.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Build_Data/";
+    hybrid.discreteNet.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Load_Data/";
+    hybrid.discreteNet.setBuildPath(true);
+    hybrid.discreteNet.loadNetwork("1Network.dat");
+    hybrid.discreteNet.bloodFlow(true);
+    hybrid.discreteNet.pictureNetwork("Network_Pressure.ps",hybrid.discreteNet.segpress);
 
-    vnet.loadNetwork("1pNetwork.dat");
-    vnet.bloodFlow(true, true, false, false);
-    vnet.printVisuals();
-    vnet.printNetwork("solved_NetworkBloodFlow.txt");
+    hybrid.discreteNet.findBoundingBox();
 
+    // Generate micro-cell
+    hybrid.cell.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Build_Data/";
+    hybrid.cell.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Load_Data/";
+    hybrid.cell.setBuildPath(false); // Create build directory / delete contents
 
-    /*mat data;
+    hybrid.cell.setDiamDistrib(hybrid.discreteNet.diam(find(hybrid.discreteNet.vesstyp == 2)));
+    hybrid.cell.setLengthDistrib(hybrid.discreteNet.lseg(find(hybrid.discreteNet.vesstyp == 2)));
+    hybrid.cell.rotationAngle = 0.;
+    hybrid.cell.computeConductivity("crossCell3D");
 
-    #pragma omp parallel for default(none) schedule(dynamic)
-    for (int file = 1; file <= 12; file++)    {
+    // Run vessel classification
+    imat inOutlets = zeros<imat>(2,2);
+    inOutlets(0,0) = 830;
+    inOutlets(0,1) = 1;
+    inOutlets(1,0) = 825;
+    inOutlets(1,1) = 2;
+    //inOutlets(2,0) = 824;
+    //inOutlets(2,1) = 1;
+/*    inOutlets(0,0) = 78;
+    inOutlets(0,1) = 1;
+    inOutlets(1,0) = 76;
+    inOutlets(1,1) = 2;
+    inOutlets(2,0) = 225;
+    inOutlets(2,1) = 1;*/
 
-        string filename = to_string(file) + "Network.txt";
+    // Generate spatial graph
+    hybrid.graph.generate(hybrid.discreteNet, true);
+    hybrid.graph.analyseTopology(inOutlets);
 
-        // Directory setup
-
-        Vasculature vnet;
-        vnet.setStackSize(); // Prevent stack overflow when running recursive functions (for large networks)
-        //vnet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data_LS3_" + to_string(file) + "/";
-        vnet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data_" +to_string(file) + "/";
-        vnet.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/LS3/";
-        vnet.setBuildPath(); // Create build directory / delete contents
-
-        // Load network file
-        vnet.loadNetwork(filename);
-
-        //if (file == 1)  {data = zeros<mat>(vnet.getNseg(),12);}
-        //data.col(file-1) = vnet.hd;
-
-        mat extraD = zeros<mat>(vnet.getNseg(), 1);
-        vnet.printAmira("amiraNetwork.am", extraD);
-        vnet.hd.fill(0.4);
-        vnet.bchd.fill(0.4);
-
-
-        // Solving for blood flow
-        //vnet.loadDeadEnds = true;
-        vnet.bloodFlow(true, true, false, false);
-        vnet.printVisuals();
-        vnet.printNetwork("solved_NetworkBloodFlow.txt");
-
-    }*/
-
-
+    // Run discrete-continuum model
+    hybrid.runHybrid();
 
 }

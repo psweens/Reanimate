@@ -10,7 +10,6 @@ void Network::setup_networkArrays() {
     nodrank = zeros<ivec>(nnod);
     nk = zeros<ivec>(nnod);
 
-    rseg = zeros<vec>(nseg);
     nodtyp = zeros<ivec>(nnod);
     bcnod = zeros<ivec>(nnodbc);
     articPnt = zeros<ivec>(nnod);

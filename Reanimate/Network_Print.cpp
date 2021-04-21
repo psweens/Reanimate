@@ -35,6 +35,7 @@ void Network::printNetwork(const string& filename, bool resetDomain)    {
     fprintf(ofp,"%i    Max. segments per node \n",nodsegm);
     fprintf(ofp,"%i    Total number of segments\n",nseg);
     fprintf(ofp,"Segname Type Start End Diam Flow[qL/min] Hd\n");
+
     for(int iseg = 0; iseg < nseg; iseg++)     {
         fprintf(ofp,"%lli %lli %lli %lli %f %f %f\n",segname(iseg),vesstyp(iseg),segnodname(0,iseg),segnodname(1,iseg),diam(iseg),q(iseg),hd(iseg));
     }
