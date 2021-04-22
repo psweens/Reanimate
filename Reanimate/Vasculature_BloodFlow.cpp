@@ -35,7 +35,7 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
     networkCopy.printAmira("amiraDeadEnd.am", extraD);
 
     spatGraph hdGraph;
-    hdGraph.generate(networkCopy, true, true); // Diameter / length dimensions are in microns (taken from edge data)
+    hdGraph.generate(networkCopy, true); // Diameter / length dimensions are in microns (taken from edge data)
     if (any(hdGraph.nodtyp == 2) && memoryeffects)   {
         printText( "Type 2 vertex detected. Amending ...",1,0);
         hdGraph.linkEdges();
@@ -64,6 +64,7 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
 
     // Map solved flow to original network
     mapFlow(networkCopy);
+    computeBoundaryFlow();
 
     // Analyse flow
     analyseVascularFlow();

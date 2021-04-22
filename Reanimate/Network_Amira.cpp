@@ -505,8 +505,10 @@ void Network::printAmira(const string &filename, const mat &extraData, bool smoo
 
     if (smooth)     {
 
+        printText("Generating Amira file");
+
         spatGraph graph;
-        graph.generate(*this, true, true);
+        graph.generate(*this, false);
 
         uvec idx;
         ivec pntsPerEdge = zeros<ivec>(graph.getNseg());

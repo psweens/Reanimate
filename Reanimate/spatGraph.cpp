@@ -41,7 +41,7 @@ void spatGraph::setup_graphArrays() {
 
 
 //template <class CallNetwork>
-void spatGraph::generate(Network &network, bool print, bool noflow)  {
+void spatGraph::generate(Network &network, bool print)  {
 
     buildPath = network.buildPath;
     loadPath = network.loadPath;
@@ -61,9 +61,9 @@ void spatGraph::generate(Network &network, bool print, bool noflow)  {
 
 
     // Finding edge vertices
-    uvec idx{};
     ivec flagLoop = zeros<ivec>(nseg);
     segnodname = zeros<imat>(2,nseg);
+    ngraphTag = zeros<ivec>(nnod);
     for (int jseg = 0; jseg < nseg; jseg++) {
         nodtyp.zeros();
         for (int iseg = 0; iseg < network.getNseg(); iseg++) {
@@ -72,16 +72,9 @@ void spatGraph::generate(Network &network, bool print, bool noflow)  {
                 nodtyp(network.iend(iseg)) += 1;
             }
         }
-        int minNtyp = min(nodtyp(find(nodtyp)));
-        if (minNtyp == 1)   {
-            idx = find(nodtyp == 1);
+        if (min(nodtyp(find(nodtyp))) == 1)   {
+            uvec idx = find(nodtyp == 1);
             segnodname(0, jseg) = network.nodname(idx(1));
-            segnodname(1, jseg) = network.nodname(idx(0));
-        }
-        else {
-            // Looping vessels
-            idx = find(nodtyp == minNtyp);
-            segnodname(0, jseg) = network.nodname(idx(0));
             segnodname(1, jseg) = network.nodname(idx(0));
         }
     }
@@ -123,24 +116,23 @@ void spatGraph::generate(Network &network, bool print, bool noflow)  {
     lb = network.lb;
     maxl = network.maxl;
 
+
     setup_graphArrays();
     setup_networkArrays();
     analyse_network(true, print);
     printNetwork("spatialGraph.txt");
 
-    if (!noflow) {
-        int cntr = 0;
-        for (int inodbc = 0; inodbc < network.getNnodbc(); inodbc++)    {
-            if (network.bcprfl(inodbc) == 0.0 && network.bctyp(inodbc) == 1)    {
-                cntr += 1;
-            }
+    int cntr = 0;
+    for (int inodbc = 0; inodbc < network.getNnodbc(); inodbc++)    {
+        if (network.bcprfl(inodbc) == 0.0 && network.bctyp(inodbc) == 1)    {
+            cntr += 1;
         }
-        cntr -= network.getNnodbc();
-        if (nnodbc != abs(cntr)) {printText("Incorrect number of boundary nodes. Target no. = "+to_string(abs(cntr)),5);}
-        for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-            uvec idx = find(bcnodname(inodbc) == network.bcnodname);
-            if (idx.n_elem == 0)    {printText("New boundary node detected",5);}
-        }
+    }
+    cntr -= network.getNnodbc();
+    if (nnodbc != abs(cntr)) {printText("Incorrect number of boundary nodes. Target no. = "+to_string(abs(cntr)),5);}
+    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+        uvec idx = find(bcnodname(inodbc) == network.bcnodname);
+        if (idx.n_elem == 0)    {printText("New boundary node detected",5);}
     }
 
     for (int iseg = 0; iseg < nseg; iseg++) {

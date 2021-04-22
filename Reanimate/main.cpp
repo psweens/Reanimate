@@ -1,13 +1,9 @@
 #include "Network.hpp"
 #include "spatGraph.hpp"
 #include "Vasculature.hpp"
-
-#include "omp.h"
-
-#include "MicroCell.hpp"
 #include "DiscreteContinuum.hpp"
-#include <sys/resource.h>
-
+#include "MicroCell.hpp"
+#include "omp.h"
 
 using namespace reanimate;
 using namespace std;
@@ -16,10 +12,10 @@ int main(int argc, char** argv) {
 
     // Generate discrete flow solution
     DiscreteContinuum hybrid;
-    hybrid.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Build_Data/";
-    hybrid.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Load_Data/";
-    hybrid.discreteNet.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Build_Data/";
-    hybrid.discreteNet.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Load_Data/";
+    hybrid.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
+    hybrid.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
+    hybrid.discreteNet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
+    hybrid.discreteNet.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
     hybrid.discreteNet.setBuildPath(true);
     hybrid.discreteNet.loadNetwork("1Network.dat");
     hybrid.discreteNet.bloodFlow(true);
@@ -28,8 +24,8 @@ int main(int argc, char** argv) {
     hybrid.discreteNet.findBoundingBox();
 
     // Generate micro-cell
-    hybrid.cell.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Build_Data/";
-    hybrid.cell.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate-DC/Load_Data/";
+    hybrid.cell.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
+    hybrid.cell.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
     hybrid.cell.setBuildPath(false); // Create build directory / delete contents
 
     hybrid.cell.setDiamDistrib(hybrid.discreteNet.diam(find(hybrid.discreteNet.vesstyp == 2)));
@@ -58,5 +54,7 @@ int main(int argc, char** argv) {
 
     // Run discrete-continuum model
     hybrid.runHybrid();
+
+
 
 }
