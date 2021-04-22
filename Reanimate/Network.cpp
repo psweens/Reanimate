@@ -7,14 +7,16 @@
 using namespace std;
 using namespace reanimate;
 
-void Network::setBuildPath() {
+void Network::setBuildPath(bool deleteFiles) {
 
     printf("Setting build directory ...\n");
     DIR* dir = opendir(buildPath.c_str());
     if (dir) {
-        printf("Directory exists, deleting contents\n");
-        string contents = buildPath + "*";
-        system(("rm " + contents).c_str());
+        if (deleteFiles) {
+            printf("Directory exists, deleting contents\n");
+            string contents = buildPath + "*";
+            system(("rm " + contents).c_str());
+        }
     }
     else {
         printf("Directory does not exist. Creating folder ...\n");
@@ -26,10 +28,10 @@ void Network::setBuildPath() {
 
 Network::Network() {
 
-    gamma = 1./(1.e3*60);
-    alpha = 0.1333;
+    gamma = 1./(1.e3*60); //  mm3/s / gamma -> nl/min
+    alpha = 0.1333; // kg/mm.s2 / alpha -> mmHg (133.3 Pa)
     beta = 1.e-4;
-    xi = 0.001*1e-3;
+    xi = 1e-6; // kg/mm.s / xi -> cP (1e-3 Pa.s)
 
     consthd = 0.45;
 
@@ -40,6 +42,9 @@ Network::Network() {
     bloodDensity = 1060 * 1e-9; // ~Density of blood, kg / ml
 
     unknownBCs=false;
+
+    unknownBCs = false;
+    silence = false;
 
     rLog = "Reanimate_Log.txt";
 
@@ -198,10 +203,14 @@ void Network::subNetwork(ivec &index, bool graph, bool print) {
     lseg.shed_rows(idx);
     q.shed_rows(idx);
     hd.shed_rows(idx);
-    if (!graph) {
+    if (edgeLabels.n_elem > 0) {
         edgeLabels.shed_rows(idx);
         elseg.shed_rows(idx);
         ediam.shed_rows(idx);
+    }
+    if (segpress.n_elem > 0)    {
+        segpress.shed_rows(idx);
+        qq.shed_rows(idx);
     }
     index.shed_rows(idx);
     nseg = segname.n_elem;
@@ -220,6 +229,7 @@ void Network::subNetwork(ivec &index, bool graph, bool print) {
     nodname.shed_rows(idx);
     nodtyp.shed_rows(idx);
     cnode.shed_cols(idx);
+    if (nodpress.n_elem > 0)    {nodpress.shed_rows(idx);}
     nnod = nodname.n_elem;
 
 
@@ -240,6 +250,7 @@ void Network::subNetwork(ivec &index, bool graph, bool print) {
     bcprfl = zeros<vec>(nnodbc);
     bchd = zeros<vec>(nnodbc);
     bchd = zeros<vec>(nnodbc);
+    BCgeo = zeros<ivec>(nnodbc);
     
     int jnodbc = 0;
     int found{};
@@ -263,8 +274,8 @@ void Network::subNetwork(ivec &index, bool graph, bool print) {
         }
     }
 
-    (*this).setup_networkArrays();
-    (*this).analyse_network(graph,print);
+    setup_networkArrays();
+    analyse_network(graph,print);
 
 }
 
