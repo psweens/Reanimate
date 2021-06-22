@@ -10,6 +10,7 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
     memoryeffects = memoryEffects;
     updateBoundaryHD = updateBCHD;
 
+    startClock();
     printText("Blood Flow Module", 3);
     setup_flowArrays(false);
 
@@ -19,27 +20,32 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
     printText("Cloning vascular network");
     Vasculature networkCopy = *this;
 
-    if (loadDeadEnds)   {
-        printText("Reading dead ends");
-        deadEnds = vesstyp;}
-    else {
-        deadEnds = networkCopy.findDeadends();
-        //vesstyp = deadEnds;
-        printNetwork("network_DeadendsLabels.txt");
-    }
-    if (accu(deadEnds) > 0) {
-        printText("Removing dead ends",2,0);
-        networkCopy.subNetwork(deadEnds, false, false);
-    }
-    mat extraD = zeros<mat>(networkCopy.getNseg(), 1);
-    networkCopy.printAmira("amiraDeadEnd.am", extraD);
-
     spatGraph hdGraph;
-    hdGraph.generate(networkCopy, true); // Diameter / length dimensions are in microns (taken from edge data)
-    if (any(hdGraph.nodtyp == 2) && memoryeffects)   {
-        printText( "Type 2 vertex detected. Amending ...",1,0);
-        hdGraph.linkEdges();
+    if (phaseSeparation)    {
+        if (loadDeadEnds)   {
+            printText("Reading dead ends");
+            deadEnds = vesstyp;}
+        else {
+            deadEnds = networkCopy.findDeadends();
+            if (max(vesstyp) < 3)   {
+                vesstyp = deadEnds;
+                printNetwork("Network_DeadEndLabels.txt");
+            }
+        }
+        if (accu(deadEnds) > 0) {
+            printText("Removing dead ends",2,0);
+            networkCopy.subNetwork(deadEnds, false, false);
+        }
+
+        hdGraph.generate(networkCopy, true); // Diameter / length dimensions are in microns (taken from edge data)
+        if (any(hdGraph.nodtyp == 2) && memoryeffects)   {
+            printText( "Type 2 vertex detected. Amending ...",1,0);
+            hdGraph.linkEdges();
+        }
+        mat extraD = zeros<mat>(hdGraph.getNseg(), 1);
+        hdGraph.printAmira("amiraSpatGraph.am", extraD, false);
     }
+
 
     // Millimetre scaling for copied network
     networkCopy.diam *= 1e-3;
@@ -54,6 +60,7 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
     networkCopy.nitmax = 100;
     if (unknownBCs)    {
         printText("Unknown boundary conditions detected -> Running flow estimation",2);
+        startClock();
         networkCopy.setup_estimationArrays();
         networkCopy.iterateFlowDir(hdGraph);
     }
@@ -68,6 +75,9 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
 
     // Analyse flow
     analyseVascularFlow();
+
+    // Print Solution
+    printNetwork("Network_SolvedBloodFlow.txt");
 
 }
 
@@ -88,9 +98,8 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
     for (int iter = 1; iter <= nitmax; iter++)  {
 
         // Update relaxation
-        if (iter % 5 == 0 && iter < 100)  {relax *= 0.8;}
+        if (iter % 5 == 0)  {relax *= 0.8;}
         track = iter;
-
 
         // Calculate conductance
         if(phaseseparation) {
@@ -99,39 +108,9 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
         }
         else {computeConductance();}
 
-
         // Flow solver
         (this->*solver)();
 
-        if (any(q == 0.0))  {printText( "No flow detected",5);
-            /*vec temp = zeros<vec>(nseg);
-            temp(find(q == 0.0)).fill(1.);
-            mat extraD = zeros<mat>(nseg, 1);
-            extraD.col(0) = temp;
-            printAmira("amiraNoFlow.am", extraD);
-            cout<<accu(temp)<<endl;
-            for (int iseg = 0; iseg < nseg; iseg++) {
-                if (q(iseg) == 0.0) {
-                    if (nodtyp(ista(iseg)) == 2)    {
-                        cout<<"sta: "<<nodpress(ista(iseg))<<"\t"<<nodpress(iend(iseg))<<endl;
-                        for (int jseg = 0; jseg < nseg; jseg++) {
-                            if (ista(iseg) == ista(jseg) || ista(iseg) == iend(jseg)) {
-                                if (iseg != jseg) { cout << "\t" << q(jseg) << endl; }
-                            }
-                        }
-                    }
-                    else if (nodtyp(iend(iseg)) == 2)    {
-                        cout<<"end: "<<nodpress(ista(iseg))<<"\t"<<nodpress(iend(iseg))<<endl;
-                        for (int jseg = 0; jseg < nseg; jseg++) {
-                            if (iend(iseg) == ista(jseg) || iend(iseg) == iend(jseg)) {
-                                if (iseg != jseg) { cout << "\t" << q(jseg) << endl; }
-                            }
-                        }
-                    }
-                }
-            }*/
-
-        }
         if (unknownBCs) {
             // To allow tau0 to update flow directions rather than magnitude
             flowsign = sign(q);
@@ -144,23 +123,20 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
             putrank(hdGraph);
             dishem(memoryeffects, hdGraph);
 
-            if (any(hd > 1.0))  {
-                uword segerr{};
-                double maxhderr= hd.max(segerr);
-                printText( "Unphysiological haematocrit detected, h'crit = "+to_string(maxhderr)+" at segment "+to_string(segerr),5);
-            }
+            //cout<<"analysis"<<endl;
+            //timecheck();
 
             // Compare hd and q with previous values
             vec errs = computeFlowError(relax);
             maxqerr = errs(0);
             maxhderr = errs(1);
-            //hd(find(hd > 1.0)).fill(consthd);
-            for (int iseg = 0; iseg < nseg; iseg++) {
+            /*for (int iseg = 0; iseg < nseg; iseg++) {
                 if (hd(iseg) > 1.0 || isnan(hd(iseg)) || isinf(hd(iseg))) {hd(iseg) = consthd;}
-            }
+            }*/
 
             qold = q;
             hdold = hd;
+            //timecheck();
 
         }
         if((maxqerr < qtol && maxhderr < hdtol))  {
@@ -194,12 +170,19 @@ void Vasculature::iterateFlowDir(spatGraph &hdGraph)   {
         // Calculate flow sign and assign tau0 accordingly
         flowsign = sign(q);
         double newK = mean(tau % tau) / pow(mean(tau),2);
-        tau0 = targStress * newK * flowsign;
+        if (empiricalTau0)  {
+            for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/ 2.;}
+            if (segpress.min() > 0.)    {
+                empiricalWSS();
+                tau0 = newK * flowsign % tau0;
+            }
+        }
+        else {tau0 = targStress * newK * flowsign;}
 
         // Count flow reversal
         int nflowreversal = (int) accu(abs(flowsign(find(flowsign != oldFlowsign))));
         printText( "Total reversed flow = "+to_string(nflowreversal)+", ktau/kp = "+to_string(ktau/kp)+", tissue perfusion = "+to_string(tissperfusion)+" ml/min/100g",1,0);
-        cout<<"Min pressure: "<<nodpress.min() / alpha<<endl;
+        cout<<"Min pressure: "<<nodpress.min()<<endl;
         if (ktau / kp > 1 && nflowreversal < 50 && nodpress.min() > 0.0) {nitmax = 200;}
         else {nitmax = 100;}
 
@@ -211,9 +194,9 @@ void Vasculature::iterateFlowDir(spatGraph &hdGraph)   {
             inflow = 0.;
             ktau  = oldktau;
             tau = abs(oldTau) / beta;
-            q = oldq / gamma;
+            q = oldq;
             qq = abs(qq);
-            nodpress = oldNodpress / alpha;
+            nodpress = oldNodpress;
             hd = oldHd;
 
             printText("Final ktau/kp = "+to_string(ktau/kp)+", mean wall shear stress = "+to_string(mean(tau))+" dyn/cm2",1);
@@ -263,18 +246,30 @@ void Vasculature::computeConductance()   {
 
 }
 
+void Vasculature::empiricalWSS()    {tau0 = (100. - 86.*exp(-5000.*pow(log10(log10(segpress)),5.4))) * beta;}
+
 vec Vasculature::computeFlowError(double &relax)    {
 
     uword errsegq{},errseghd{};
-    vec qchange = (q - qold) / gamma;
+    vec qchange = (q - qold);
     vec hdchange = hd - hdold;
     hd = hdold + relax*hdchange;
-    if (any(hd < 0))    {
+    if (any(hd < 0.))    {
         printText("Negative h'crit",5);
         hd(find(hd < 0)).fill(0.0);
     }
     double maxqerr = abs(qchange).max(errsegq);
     double maxhderr = abs(hdchange).max(errseghd);
+
+    if (any(hd > 1.))   {
+        uword segerr{};
+        double maxhderr= hd.max(segerr);
+        printText( "Unphysiological haematocrit detected, h'crit = "+to_string(maxhderr)+" at segment "+to_string(segerr),5);
+
+        uvec idx = find(hd > 0.);
+        hd(idx) = hdold(idx);
+    }
+
     vec errs = zeros<vec>(2);
     errs(0) = maxqerr;
     errs(1) = maxhderr;

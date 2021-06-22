@@ -125,11 +125,13 @@ void Network::findLengths() {
 
 void Network::analyseBoundaryType()  {
 
-    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-        if (vesstyp(nodseg(0,bcnod(inodbc))) == 1)  {BCgeo(inodbc) = 1;}
-        else if (vesstyp(nodseg(0,bcnod(inodbc))) == 2)  {BCgeo(inodbc) = 2;}
-        else if (vesstyp(nodseg(0,bcnod(inodbc))) == 3)  {BCgeo(inodbc) = 3;}
-        else {printText( "Boundary node "+to_string(bcnodname(inodbc))+" not classified",4);}
+    if (max(vesstyp == 3))  {
+        for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+            if (vesstyp(nodseg(0,bcnod(inodbc))) == 1)  {BCgeo(inodbc) = 1;}
+            else if (vesstyp(nodseg(0,bcnod(inodbc))) == 2)  {BCgeo(inodbc) = 2;}
+            else if (vesstyp(nodseg(0,bcnod(inodbc))) == 3)  {BCgeo(inodbc) = 3;}
+            else {printText( "Boundary node "+to_string(bcnodname(inodbc))+" not classified",4);}
+        }
     }
 
 }

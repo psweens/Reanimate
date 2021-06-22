@@ -8,18 +8,20 @@ using namespace reanimate;
 
 void Vasculature::analyseVascularFlow()  {
 
+    // PROVIDE ANALYSIS FOR EDGES TOO!
+
     printText("Analysing vascular flow", 6);
     rheolParams();
 
     // Blood velocity
-    vel = qq * gamma / (M_PI*pow(0.5*diam*1e-3,2)); // mm/s
+    vel = qq * gamma / (M_PI*pow(0.5*diam*1.e-3,2)); // mm/s
 
     // Reynolds number
     vec Re = zeros<vec>(nseg);
     double visc{};
     for (int iseg = 0; iseg < nseg; iseg++) {
         visc = viscor((diam(iseg)),hd(iseg))*xi;
-        Re(iseg) = bloodDensity * vel(iseg) * lseg(iseg)*1e-3 / visc;
+        Re(iseg) = bloodDensity * vel(iseg) * lseg(iseg)*1.e-3 / visc;
     }
 
     // Vascular segment transit time

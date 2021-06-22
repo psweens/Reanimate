@@ -89,6 +89,8 @@ double Vasculature::viscor(const double &d, const double &hd) {
 void Vasculature::dishem(bool &memoryeffects, Network &graph)    {
 
     //printText("Calculating haematocrit distribution",2, 0);
+    //cout<<"dishem"<<endl;
+    //timecheck();
 
     int segfltot = graph.getNseg();
     ivec segs = zeros<ivec>(graph.nodsegm);
@@ -102,28 +104,28 @@ void Vasculature::dishem(bool &memoryeffects, Network &graph)    {
             isegk += 1;
         }
     }
-
+    //timecheck();
 
     // Cycle through interior inflowing nodes
+    int nodt{},nout{},nrank{};
+    double flowsum{},hq{};
     for (int in = 0; in < graph.nnodfl; in++) {
 
         // If node is an interior node:
-        // Store associated segment indices in increasing rank order
         // Store absolute flow value of segment in increasing rank order
-        int nodt = (int) graph.nodtyp(graph.nodrank(in));
-        int nout = (int) graph.nodout(graph.nodrank(in));
+        nrank = (int) graph.nodrank(in);
+        nodt = (int) graph.nodtyp(nrank);
+        nout = (int) graph.nodout(nrank);
         if (nodt >= 2)  {
             for (int i = 0; i < nodt; i++)  {
-                segs(i) = graph.nodseg(i, graph.nodrank(in));
+                segs(i) = graph.nodseg(i,nrank);
                 flow(i) = abs(graph.q(segs(i)));
             }
         }
 
         // 2-segment nodes: nout = 2 could happen in iterations
         if (nodt == 2)  {
-            if (nout == 1)  {
-                graph.hd(segs(0)) = graph.hd(segs(1));
-            }
+            if (nout == 1)  {graph.hd(segs(0)) = graph.hd(segs(1));}
             else if (nout == 2)  {
                 graph.hd(segs(0)) = graph.bchd(0);
                 graph.hd(segs(1)) = graph.bchd(0);
@@ -131,24 +133,24 @@ void Vasculature::dishem(bool &memoryeffects, Network &graph)    {
         }
 
         // 3-segment nodes: convergent, divergent
-        if (!memoryeffects)  {
-            woMemory(nout, nodt, segfltot, segs, flow, graph);
-        }
-        else    {
-            // With memory effects - daughter with: high flow (favourable, f), low flow (unfavourable, u)
-            wMemory(nout, nodt, segfltot, segs, flow, graph);
+        if (nodt == 3)  {
+            if (!memoryeffects)  {
+                woMemory(nout, nodt, segfltot, segs, flow, graph);
+            }
+            else    {
+                // With memory effects - daughter with: high flow (favourable, f), low flow (unfavourable, u)
+                wMemory(nout, nodt, segfltot, segs, flow, graph);
+            }
         }
 
         // No phase separation for nodes with more than three segments
         if (nodt > 3)  {
             if (nout == nodt)   {
-                for (int i = 0; i < nodt; i++) {
-                    graph.hd(segs(i)) = graph.bchd(0);
-                }
+                for (int i = 0; i < nodt; i++) {graph.hd(segs(i)) = graph.bchd(0);}
             }
             else    {
-                double flowsum = 0.;
-                double hq = 0.;
+                flowsum = 0.;
+                hq = 0.;
                 for (int i = nout; i < nodt; i++)   {
                     flowsum += abs(graph.q(segs(i)));
                     hq += graph.hd(segs(i)) * abs(graph.q(segs(i)));
@@ -167,46 +169,48 @@ void Vasculature::dishem(bool &memoryeffects, Network &graph)    {
     if(isegk != segfltot) {
         printText("Hd computed in " + to_string(isegk) + " of " + to_string(segfltot) + " segments processed", 4);
     }
+    //timecheck();
 
-    uvec idx;
+    double tmp{};
     for (int iseg = 0; iseg < graph.getNseg(); iseg++) {
-        idx = find(graph.segname(iseg) == edgeLabels);
-        hd(idx).fill(graph.hd(iseg));
+        tmp = graph.hd(iseg);
+        for (int jseg = 0; jseg < graph.edgetyp(iseg); jseg++)    {
+            hd(graph.edgeseg(jseg, iseg)) = tmp;
+        }
     }
+    //timecheck();
 
 }
 
 void Vasculature::woMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec &flow, Network &graph)    {
 
-    if (nodt == 3)  {
-        if (nout == 1)  { // Convergent - use conservation
-            graph.hd(segs(0)) = (flow(1)*graph.hd(segs(1)) + flow(2)*graph.hd(segs(2))) / flow(0);
+    if (nout == 1)  { // Convergent - use conservation
+        graph.hd(segs(0)) = (flow(1)*graph.hd(segs(1)) + flow(2)*graph.hd(segs(2))) / flow(0);
+    }
+    if (nout == 2) { // Divergent - apply empirical law
+        double hdd = (1. - graph.hd(segs(2)))/graph.diam(segs(2));
+        double diaquot = pow(graph.diam(segs(0))/graph.diam(segs(1)),2);
+        double a = bifpar(2)*(diaquot - 1.)/(diaquot + 1.)*hdd;
+        double b = 1. + bifpar(1)*hdd;
+        double x0 =  bifpar(0)*hdd;
+        double qikdash = (flow(0)/flow(2) - x0)/(1. - 2.*x0);
+        if (qikdash <= 0.){
+            graph.hd(segs(0)) = 0.;
+            graph.hd(segs(1)) = graph.hd(segs(2))*flow(2)/flow(1);
         }
-        if (nout == 2) { // Divergent - apply empirical law
-            double hdd = (1. - graph.hd(segs(2)))/graph.diam(segs(2));
-            double diaquot = pow(graph.diam(segs(0))/graph.diam(segs(1)),2);
-            double a = bifpar(2)*(diaquot - 1.)/(diaquot + 1.)*hdd;
-            double b = 1. + bifpar(1)*hdd;
-            double x0 =  bifpar(0)*hdd;
-            double qikdash = (flow(0)/flow(2) - x0)/(1. - 2.*x0);
-            if (qikdash <= 0.){
-                graph.hd(segs(0)) = 0.;
-                graph.hd(segs(1)) = graph.hd(segs(2))*flow(2)/flow(1);
-            }
-            else if (qikdash >= 1.){
-                graph.hd(segs(1)) = 0.;
-                graph.hd(segs(0)) = graph.hd(segs(2))*flow(2)/flow(0);
-            }
-            else {
-                double rbcrat = 1./(1. + exp(-a-b*log(qikdash/(1.-qikdash))));
-                graph.hd(segs(0)) = rbcrat*graph.hd(segs(2))*flow(2)/flow(0);
-                graph.hd(segs(1)) = (1.-rbcrat)*graph.hd(segs(2))*flow(2)/flow(1);
-            }
+        else if (qikdash >= 1.){
+            graph.hd(segs(1)) = 0.;
+            graph.hd(segs(0)) = graph.hd(segs(2))*flow(2)/flow(0);
         }
-        else if (nout == 3) {
-            for (int i = 0; i < 3; i++) {
-                graph.hd(segs(i)) = graph.bchd(0);
-            }
+        else {
+            double rbcrat = 1./(1. + exp(-a-b*log(qikdash/(1.-qikdash))));
+            graph.hd(segs(0)) = rbcrat*graph.hd(segs(2))*flow(2)/flow(0);
+            graph.hd(segs(1)) = (1.-rbcrat)*graph.hd(segs(2))*flow(2)/flow(1);
+        }
+    }
+    else if (nout == 3) {
+        for (int i = 0; i < 3; i++) {
+            graph.hd(segs(i)) = graph.bchd(0);
         }
     }
 
@@ -214,44 +218,42 @@ void Vasculature::woMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec 
 
 void Vasculature::wMemory(int &nout, int &nodt, int &segfltot, ivec &segs, vec &flow, Network &graph)    {
 
-    if (nodt == 3)  {
 
-        if (nout == 1)  { // Convergent - use conservation
-            graph.hd(segs(0)) = (flow(1)*graph.hd(segs(1)) + flow(2)*graph.hd(segs(2))) / flow(0);
-        }
-        if (nout == 2) { // Divergent - apply empirical law
-            double dp = graph.diam(segs(2));
-            double l = graph.lseg(segs(2)); // Distance to previous bifurcation - calculated using edge/vertex graph
-            double rfn{};
-            if (l < dp) {rfn = 0.;}
-            else {rfn = recovfn(l, dp);}
-            double x0 = bifpar(0) * (1. - graph.hd(segs(2))) / dp;
-            double x0f = x0 * (1. - rfn);
-            double x0u = x0 * (1. + rfn);
-            double qikdash = (flow(0)/flow(2) - x0f) / (1. - x0u - x0f);
+    if (nout == 1)  { // Convergent - use conservation
+        graph.hd(segs(0)) = (flow(1)*graph.hd(segs(1)) + flow(2)*graph.hd(segs(2))) / flow(0);
+    }
+    if (nout == 2) { // Divergent - apply empirical law
+        double dp = graph.diam(segs(2));
+        double l = graph.lseg(segs(2)); // Distance to previous bifurcation - calculated using edge/vertex graph
+        double rfn{};
+        if (l < dp) {rfn = 0.;}
+        else {rfn = recovfn(l, dp);}
+        double x0 = bifpar(0) * (1. - graph.hd(segs(2))) / dp;
+        double x0f = x0 * (1. - rfn);
+        double x0u = x0 * (1. + rfn);
+        double qikdash = (flow(0)/flow(2) - x0f) / (1. - x0u - x0f);
 
-            if (qikdash <= 0.){
-                graph.hd(segs(0)) = 0.;
-                graph.hd(segs(1)) = graph.hd(segs(2))*flow(2)/flow(1);
-            }
-            else if (qikdash >= 1.){
-                graph.hd(segs(1)) = 0.;
-                graph.hd(segs(0)) = graph.hd(segs(2))*flow(2)/flow(0);
-            }
-            else {
-                double A = -6.96 * log(graph.diam(segs(0)) / graph.diam(segs(1))) / dp;
-                double B = 1. + 6.98 * (1. - graph.hd(segs(2))) / dp;
-                double Ashift = 0.5;
-                double Af = A + Ashift * rfn;
-                double rbcrat = 1./(1. + exp(-Af-B*log(qikdash/(1.-qikdash))));
-                graph.hd(segs(0)) = rbcrat*graph.hd(segs(2))*flow(2)/flow(0);
-                graph.hd(segs(1)) = (1.-rbcrat)*graph.hd(segs(2))*flow(2)/flow(1);
-            }
+        if (qikdash <= 0.){
+            graph.hd(segs(0)) = 0.;
+            graph.hd(segs(1)) = graph.hd(segs(2))*flow(2)/flow(1);
         }
-        else if (nout == 3) {
-            for (int i = 0; i < 3; i++) {
-                graph.hd(segs(i)) = bchd(0);
-            }
+        else if (qikdash >= 1.){
+            graph.hd(segs(1)) = 0.;
+            graph.hd(segs(0)) = graph.hd(segs(2))*flow(2)/flow(0);
+        }
+        else {
+            double A = -6.96 * log(graph.diam(segs(0)) / graph.diam(segs(1))) / dp;
+            double B = 1. + 6.98 * (1. - graph.hd(segs(2))) / dp;
+            double Ashift = 0.5;
+            double Af = A + Ashift * rfn;
+            double rbcrat = 1./(1. + exp(-Af-B*log(qikdash/(1.-qikdash))));
+            graph.hd(segs(0)) = rbcrat*graph.hd(segs(2))*flow(2)/flow(0);
+            graph.hd(segs(1)) = (1.-rbcrat)*graph.hd(segs(2))*flow(2)/flow(1);
+        }
+    }
+    else if (nout == 3) {
+        for (int i = 0; i < 3; i++) {
+            graph.hd(segs(i)) = bchd(0);
         }
     }
 

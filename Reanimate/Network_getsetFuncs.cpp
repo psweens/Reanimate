@@ -25,3 +25,7 @@ void Network::setStackSize(int stackSize) {
     }
 
 }
+
+void Network::setTargetTau(double tau0) {targStress = tau0;}
+void Network::setTargetPressure(double p0) {targPress = p0;}
+void Network::setEmpiricalTau0(bool empirical) {empiricalTau0 = empirical;}

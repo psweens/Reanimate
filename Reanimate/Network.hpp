@@ -23,13 +23,14 @@ namespace reanimate {
     public:
 
         string networkName,networkPath,buildPath,loadPath,rLog;
-        bool unknownBCs,phaseseparation,silence;
+        bool unknownBCs,phaseseparation,empiricalTau0,silence,temp_measure;
         int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track,nitmax{};
-        double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.},tissDensity{},bloodDensity{},consthd{},constvisc{};
-        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,flagTree,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt;
+        double timerStart{},alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.},tissDensity{},bloodDensity{},consthd{},constvisc{};
+        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,edgeSta,edgeEnd,edgeSeg,flagTree,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt,edgetyp;
         vec diam,rseg,lseg,q,qq,vel,hd,bcprfl,bchd,nodpress,BCflow,BCpress,tau,segpress,elseg,ediam;
-        uvec unknownnod_idx,bcpress_idx;
+        uvec unknownnod_idx,bcpress_idx,bcpnod_idx;
         imat segnodname,nodnod,nodseg;
+        umat edgeseg;
         mat cnode,bcp;
 
         virtual double evalTissPress(vec &x) {return 0.;}
@@ -73,6 +74,9 @@ namespace reanimate {
         void setNnod(int nnod);
         void setNnodbc(int nnodbc);
         void setStackSize(int stackSize=16*1024*1024);
+        void setTargetTau(double tau0);
+        void setTargetPressure(double p0);
+        void setEmpiricalTau0(bool empirical=false);
 
         // Math functions
         double eucDistance(vec &x, vec &y);
@@ -84,6 +88,8 @@ namespace reanimate {
         // Auxiliary functions
         int detect_col(FILE *ifp);
         void initLog();
+        void startClock();
+        void timeCheck();
         double nodeAverage(const int &inod, const vec &param);
         void findBoundingBox();
 
@@ -97,6 +103,7 @@ namespace reanimate {
         void printReducedAmira(const string &filename);
         void printAmira(const string &filename, const mat &extraData=zeros<mat>(0,0), bool smooth=true, const char *headers[]={});
         void printNamira(const string &filename, const string &networkname);
+        void printAscii(const string &filename);
         void plotContour(const string filename, Network &graph, double maxval, double minval, bool vector=false, bool overlay=true, const int xgrid=1e2, const int ygrid=1e2, const int NL=10);
         void shadeContour(FILE *ofp, const int &m, const int &n, double &scalefac, int &nl, const double pint, const double &xmin, const double &xmax, const double &ymin, const double &ymax, const vec &cl, const mat &zv);
 

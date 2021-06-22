@@ -3,6 +3,7 @@
 
 #include <string>
 #include <dirent.h>
+#include <bits/stdc++.h>
 
 using namespace std;
 using namespace reanimate;
@@ -26,6 +27,21 @@ void Network::setBuildPath(bool deleteFiles) {
 
 }
 
+
+void Network::startClock()  {
+    clock_t start = clock();
+    printText("Starting timer");
+    timerStart = double(start);
+}
+
+
+void Network::timeCheck()   {
+    clock_t end = clock();
+    double time_taken = (double(end) - timerStart) / double(CLOCKS_PER_SEC);
+    printText("Timer: "+to_string(time_taken)+" sec",2,0);
+}
+
+
 Network::Network() {
 
     gamma = 1./(1.e3*60); //  mm3/s / gamma -> nl/min
@@ -33,10 +49,13 @@ Network::Network() {
     beta = 1.e-4;
     xi = 1e-6; // kg/mm.s / xi -> cP (1e-3 Pa.s)
 
-    consthd = 0.45;
+    consthd = 0.4;
 
     kp = 0.1;
     ktau = 1.e-4;
+    targPress = 31.;
+    targStress = 15.;
+    empiricalTau0 = false;
 
     tissDensity = 1027 * 1e-9; // ~Density of tissue, kg / ml (connective tissue)
     bloodDensity = 1060 * 1e-9; // ~Density of blood, kg / ml
@@ -45,6 +64,7 @@ Network::Network() {
 
     unknownBCs = false;
     silence = false;
+    temp_measure = false;
 
     rLog = "Reanimate_Log.txt";
 
@@ -77,6 +97,7 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
     fscanf(ifp, "%lf\n", &maxl); fgets(bb,max,ifp);
     fscanf(ifp,"%lli", &nodsegm);
     fgets(bb,max,ifp);
+    nodsegm = 35;
 
     printText("Tissue Dimensions (x,y,z) = " + to_string(int(alx)) + " um x " + to_string(int(aly)) + " um x " + to_string(int(alz)) + " um", 1, 0);
     

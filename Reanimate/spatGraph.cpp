@@ -135,11 +135,41 @@ void spatGraph::generate(Network &network, bool print)  {
         if (idx.n_elem == 0)    {printText("New boundary node detected",5);}
     }
 
+    int nod1{},nod2{};
     for (int iseg = 0; iseg < nseg; iseg++) {
-        int inod1 = (int) ista(iseg);
-        int inod2 = (int) iend(iseg);
-        segnod(inod1,inod2) = iseg;
-        segnod(inod2,inod1) = iseg;
+        nod1 = (int) ista(iseg);
+        nod2 = (int) iend(iseg);
+        segnod(nod1,nod2) = iseg;
+        segnod(nod2,nod1) = iseg;
+    }
+
+    // Store Vertex indices in full network graph & index of a single segment from edge
+    uvec idx,node1,node2;
+    edgeSta = zeros<ivec>(nseg);
+    edgeEnd = zeros<ivec>(nseg);
+    edgeSeg = zeros<ivec>(nseg);
+    int segmax{};
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        idx = find(segname(iseg) == network.edgeLabels);
+        if ((int) idx.n_elem > segmax)    {segmax = idx.n_elem;}
+        if (idx.n_elem == 0)  {printText("No segments found in full network graph",5);}
+        else {edgeSeg(iseg) = idx(0);}
+        node1 = find(segnodname(0, iseg) == network.nodname);
+        node2 = find(segnodname(1, iseg) == network.nodname);
+        if (node1.n_elem > 1 || node2.n_elem > 1)  {printText("Multiple nodes found in full network graph for vertex",5);}
+        else {
+            edgeSta(iseg) = node1(0);
+            edgeEnd(iseg) = node2(0);
+        }
+    }
+    edgeseg = zeros<umat>(segmax,nseg);
+    edgetyp = zeros<ivec>(nseg);
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        idx = find(segname(iseg) == network.edgeLabels);
+        edgetyp(iseg) = (int) idx.n_elem;
+        for (int jseg = 0 ; jseg < edgetyp(iseg); jseg++) {
+            edgeseg(jseg,iseg) = idx(jseg);
+        }
     }
 
 }

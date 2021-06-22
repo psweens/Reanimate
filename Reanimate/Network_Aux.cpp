@@ -374,57 +374,6 @@ void time_check(FILE *ift, const string &local, double &run_start, const string 
         outputf(ift,local,text, time_span,"seconds");
     }
     
-}
+}*/
 
 
-// Output data for angiogenesis modelling
-void ascii_output(const string &filename)   {
-    
-    FILE *ofp;
-    
-    string rootname = buildPath + filename;
-    
-    ofp = fopen(rootname.c_str(),"w");
-    
-    // Calculate nodal r0
-    vec n_radii = zeros<vec>(nnod);
-    int cntr = 0;
-    for (int inod = 0; inod < nnod; inod++) {
-        for (int iseg = 0; iseg < nseg; iseg++) {
-            if (ista(iseg) == inod || iend(iseg) == inod)   {
-                n_radii(inod) += rseg(iseg);
-                cntr += 1;
-            }
-            if (cntr == nodtyp(inod))    {
-                iseg = nseg;
-            }
-        }
-        n_radii(inod) /= cntr;
-        cntr = 0;
-    }
-
-    fprintf(ofp,"%i\n",nnod);
-    for (int inod = 0; inod < nnod; inod++) {
-        fprintf(ofp,"%i %lf %lf %lf %lf\n",inod,cnode(0,inod),cnode(1,inod),cnode(2,inod),n_radii(inod));
-    }
-    fprintf(ofp,"%i\n",nseg);
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        fprintf(ofp,"%i %lli %lli\n",iseg,ista(iseg),iend(iseg));
-    }
-    fprintf(ofp,"%i\n",nnodbc);
-    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-        if (BCflow(inodbc) > 0. && BCflow(inodbc) < 1e-8)    {
-            fprintf(ofp,"%lli %i\n",bcnod(inodbc),106);
-        }
-        else if (BCflow(inodbc) > 0.)    {
-            fprintf(ofp,"%lli %i\n",bcnod(inodbc),101);
-        }
-        else if (BCflow(inodbc) < 0.)    {
-            fprintf(ofp,"%lli %i\n",bcnod(inodbc),102);
-        }
-    }
-    
-    fclose(ofp);
-    */
-    
-//}

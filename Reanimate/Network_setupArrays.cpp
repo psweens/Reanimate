@@ -37,6 +37,7 @@ void Network::setup_flowArrays(bool popMatrices)    {
     qold = q;
     hdold = hd;
 
+    bcpress_idx = find(bctyp == 0);
     if (!unknownBCs && popMatrices)    {
 
         for (int inod = 0; inod < nnod; inod++)    {
@@ -68,11 +69,23 @@ void Network::setup_estimationArrays()  {
         if (bctyp(inodbc) == 3)    {unknownnod(bcnod(inodbc)) = 1;}
     }
     unknownnod_idx = find(unknownnod == 0);
-    bcpress_idx = find(bctyp == 0);
     nunknown = (int) accu(unknownnod);
     printText("Total unknown conditions = "+to_string(nunknown)+" ("+to_string(100*(float(nunknown)/float(nnodbc)))+"%)");
     nIBnod = nnod - nunknown; // No. of internal and known boundary nodes
     estimationarraysize = nnod + nIBnod;
+
+    int nod1{}, nod2{};
+    bcpnod_idx = zeros<uvec>(bcpress_idx.n_elem);
+    for (int inodbc = 0; inodbc < (int) bcpress_idx.n_elem; inodbc++) {
+        nod1 = bcnod(bcpress_idx(inodbc)); // Node idx w/ pressure BC
+        for (int inod = 0; inod < nIBnod; inod++) {
+            if (nod1 == (int) unknownnod_idx(inod))   {
+                bcpnod_idx(nod2) = inod;
+                nod2 += 1;
+                inod = nIBnod;
+            }
+        }
+    }
 
     // Flow reversal storage
     storeBC = bcprfl;
@@ -104,13 +117,10 @@ void Network::setup_estimationArrays()  {
     if (accu(bchd) == 0.)   {hd.fill(consthd);}
 
     // Assign target pressure
-    //targPress = 31.;
-    targPress = mean(bcprfl(find(bctyp == 0))); // Set target pressure as the mean of the assign boundary pressure conditions
     printNum("Target Pressure = ",targPress,"mmHg");
     p0.fill(targPress * alpha);
 
     // Target shear stress - intially set with random directions unless network flow is known
-    targStress = 15.;
     printNum("Target Wall Shear Stress = ",targStress,"dyn/cm2");
     targStress *= beta;
     int ran{};

@@ -3,26 +3,48 @@
 using namespace reanimate;
 
 void Network::putrank(Network &sGraph)  {
+    //cout<<"flowrank"<<endl;
+    //timecheck();
 
     //printText("Calculating flow ranking",2, 0);
-
     sGraph.q.zeros();
-    uvec idx, node1, node2;
+    int nod1{},nod2{},seg1{},seg2{},noflow{};
     for (int iseg = 0; iseg < sGraph.getNseg(); iseg++) {
-        idx = find(sGraph.segname(iseg) == edgeLabels);
-        node1 = find(sGraph.segnodname(0, iseg) == nodname);
-        node2 = find(sGraph.segnodname(1, iseg) == nodname);
-
-        if (nodpress(node1(0)) > nodpress(node2(0)))  {sGraph.q(iseg) = abs(q(idx(0)));}
-        else if (nodpress(node1(0)) < nodpress(node2(0)))  {sGraph.q(iseg) = -abs(q(idx(0)));}
-        //else {sGraph.q(iseg) = 0.0;}
+        nod1 = sGraph.edgeSta(iseg);
+        nod2 = sGraph.edgeEnd(iseg);
+        seg1 = sGraph.edgeSeg(iseg);
+        if (nodpress(nod1) > nodpress(nod2))  {sGraph.q(iseg) = abs(q(seg1));}
+        else if (nodpress(nod1) < nodpress(nod2))  {sGraph.q(iseg) = -abs(q(seg1));}
+        else {
+            sGraph.q(iseg) = 0.0;
+            noflow += 1;
+        }
     }
+    //timecheck();
+
+    if (noflow > 0)    {
+        printText( "No flow detected in "+to_string(noflow)+" segment(s)",5);
+        for (int inod = 0; inod < sGraph.getNnod(); inod++) {
+            if (sGraph.nodtyp(inod) == 2)   {
+                seg1 = sGraph.nodseg(0,inod);
+                seg2 = sGraph.nodseg(1,inod);
+                if (sGraph.q(seg1) == 0. && sGraph.q(seg2) > 0.) {
+                    printText( "Flow floating point error in segment "+to_string(seg1),4);
+                    sGraph.q(seg1) = sGraph.q(seg2);
+                }
+                else if (sGraph.q(seg2) == 0. && sGraph.q(seg1) > 0.)    {
+                    printText( "Flow floating point error in segment "+to_string(seg2),4);
+                    sGraph.q(seg2) = sGraph.q(seg1);
+                }
+            }
+        }
+    }
+    //timecheck();
 
     sGraph.nodtyp.zeros();
     sGraph.nodout.zeros();
     // Rearranging 'nodseg' and 'nodnod' in terms of flow -> output nodes precede input nodes
     // Inflowing nodes first -> 'nodout' indicates the no. of outflowing segments connected to a given node
-    int nod1{}, nod2{};
     for (int iseg = 0; iseg < sGraph.getNseg(); iseg++) {
         if (sGraph.q(iseg) >= 0.){
             nod1 = (int) sGraph.ista(iseg);
@@ -37,6 +59,7 @@ void Network::putrank(Network &sGraph)  {
         sGraph.nodnod(sGraph.nodtyp(nod1) - 1, nod1) = nod2;
         sGraph.nodout(nod1) += 1;
     }
+    //timecheck();
 
     // Store outflowing nodes second
     for (int iseg = 0; iseg < sGraph.getNseg(); iseg++) {
@@ -52,6 +75,7 @@ void Network::putrank(Network &sGraph)  {
         sGraph.nodseg(sGraph.nodtyp(nod2) - 1, nod2) = iseg;
         sGraph.nodnod(sGraph.nodtyp(nod2) - 1, nod2) = nod1;
     }
+    //timecheck();
 
 
     // Assign low ranks to inflow boundary nodes
@@ -64,11 +88,12 @@ void Network::putrank(Network &sGraph)  {
             sGraph.nnodfl += 1;
         }
     }
+    //timecheck();
 
-    // Assign increasing ranks to downstream connected nodes (removed 'goto' step due to instability)
+    // Assign increasing ranks to downstream connected nodes
     // 'While' loop terminates when all downstream nodes have been flagged
-    int flag = 1;
-    int seg;
+    int flag{1};
+    int seg{};
     while (flag == 1)   {
         flag = 0;
         for (int inod = 0; inod < sGraph.getNnod(); inod++){
@@ -88,12 +113,10 @@ void Network::putrank(Network &sGraph)  {
             }
         }
     }
-
-    int cnt_error = 0;
-    for(int inod = 0; inod < sGraph.getNnod(); inod++)	{
-        if(sGraph.nk(inod) == 0)  {cnt_error += 1;}
-    }
-    if (cnt_error > 0)  {printText(to_string(cnt_error)+" Unprocessed nodes in putrank",4);}
+    //timecheck();
+    
+    int cnt_error = sGraph.getNnod() - accu(sGraph.nk);
+    if (cnt_error > 0)  {printText(to_string(cnt_error)+" unprocessed nodes in putrank",4);}
 
 }
 

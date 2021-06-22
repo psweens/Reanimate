@@ -28,6 +28,7 @@ namespace reanimate {
 
         double viscor(const double &d, const double &hd);
         void computeConductance();
+        void empiricalWSS();
 
     private:
 

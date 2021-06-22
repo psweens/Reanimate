@@ -20,16 +20,17 @@ void Network::fullSolver()    {
     // Define qo - pressure and flow boundary conditions
     if (!phaseseparation)   {printText("Assigning boundary conditions",2, 0);}
     int idx{};
+    rowvec kRow = zeros<rowvec>(K.n_cols);
     for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
         idx = bcnod(inodbc);
         if (bctyp(inodbc) == 0)  {
             Qo(idx) = bcprfl(inodbc)*alpha;
-            K.row(idx).zeros();
-            K(idx,idx) = 1.;
+            kRow(idx) = 1.;
+            K.row(idx) = kRow;
+            kRow(idx) = 0.;
         }
         else    {Qo(idx) = -bcprfl(inodbc)*gamma;}
     }
-
 
     superlu_opts settings;
     if (phaseseparation)    {
@@ -48,6 +49,9 @@ void Network::fullSolver()    {
 
 void Network::estimationSolver() {
 
+    //cout<<"solver"<<endl;
+    //timecheck();
+
     // Construct conductance, M
     double tcond{};
     for (int iseg = 0; iseg < nseg; iseg++) {
@@ -55,21 +59,23 @@ void Network::estimationSolver() {
         M(iseg,ista(iseg)) = tcond;
         M(iseg,iend(iseg)) = -tcond;
     }
+    //timecheck();
 
     // Construct K matrix but inputting into matrix A to reduce run-time
     A(span(0,nIBnod-1),span(0,nnod-1)) = L * M;
-    int nod1{},nod2{};
+    //timecheck();
+    int nod1{},nod2{},nodidx{};
     uvec idx{};
-    rowvec aRow = zeros<rowvec>(A.n_cols);
+    rowvec aRow = zeros<rowvec>(nnod);
     for (int inodbc = 0; inodbc < (int) bcpress_idx.n_elem; inodbc++) {
         nod1 = bcnod(bcpress_idx(inodbc)); // Node idx w/ pressure BC
-        idx = find(nod1 == unknownnod_idx);
-        nod2 = idx(0);  // Node idx of known nodes
-        aRow = A.row(nod2);
-        aRow(find(aRow > 0.)).fill(0.);
+        nod2 = bcpnod_idx(nodidx);
+        nodidx += 1;
         aRow(nod1) = 1.;
-        A.row(nod2) = aRow;
+        A(nod2, span(0, nnod-1)) = aRow;
+        aRow(nod1) = 0.;
     }
+    //timecheck();
 
     // Constructing H matrix - replacing with matrix A for reduced run-time
     if (nseg < 1e3) {
@@ -93,22 +99,26 @@ void Network::estimationSolver() {
         }
         A(span(nIBnod,estimationarraysize-1),span(0,nnod-1)) = ktau*(H1 * H2) + W;
     }
+    //timecheck();
 
     // Final A matrix entry - transpose of K
     A(span(nIBnod,estimationarraysize-1),span(nnod,estimationarraysize-1)) = A(span(0,nIBnod-1),span(0,nnod-1)).t();
+    //timecheck();
     // Construct B vector
     B(span(nIBnod,estimationarraysize-1)) = (W.diag() % p0) + (ktau * (M.t() * (tau0 % (c % lseg))));
+    //timecheck();
 
 
     // Equilibrates system - scales rows and columns to unit norm in order to prevent singular system
     superlu_opts settings;
     //settings.allow_ugly = true;
-    settings.equilibrate = true;
-    settings.refine = settings.REF_EXTRA;
+    //settings.equilibrate = true;
+    //settings.refine = settings.REF_EXTRA;
     vec x = spsolve(A,B,"superlu",settings);
+    //timecheck();
 
+    nodpress = x(span(0,nnod-1))/alpha;
+    q = (M * nodpress)*(alpha/gamma);
+    tau = c % abs(q)*gamma;
 
-    nodpress = x(span(0,nnod-1));
-    q = (M * nodpress);
-    tau = c % abs(q);
 }
