@@ -11,6 +11,7 @@ void MicroCell::computeConductivity(const string cellType, const int iterations,
     printText("Micro-Cell Module", 3);
 
     rheolParams();
+    cell2D = false;
 
     if (cellType == "hexCell2D")    {printText("Applying 2D hexagonal cell");}
     else if (cellType == "crossCell3D") {printText("Applying 3D cross cell");}
@@ -69,8 +70,8 @@ void MicroCell::flowMicroCell()    {
     cB = zeros<mat>(Innod,nseg);
     for (int inod = 0; inod < Innod; inod++)    {
         for (int iseg = 0; iseg < nseg; iseg++) {
-            if (idx(inod) == ista(iseg)) {cB(inod,iseg) = -1.;}
-            else if (idx(inod) == iend(iseg))    {cB(inod,iseg) = 1.;}
+            if ((int) idx(inod) == ista(iseg)) {cB(inod,iseg) = -1.;}
+            else if ((int) idx(inod) == iend(iseg))    {cB(inod,iseg) = 1.;}
         }
     }
 
@@ -112,141 +113,82 @@ void MicroCell::flowMicroCell()    {
 
     // Define conductance
     computeConductance();
+    conductance = conductance % lseg; // Modified conductance
 
     // Conservation of internal cell flux
-    mat BA = (cB.each_row() % conductance.t()) * cA;
+    mat BA = cB * (conductance % cA.each_col());
 
 
     // Conservation of boundary cell flux
-    mat EA = (cE.each_row() % conductance.t()) * cA;
+    mat EA = cE * (conductance % cA.each_col());
 
 
     // Volume pressure average
     double omega = alx*aly*alz*1e-9;
-    vec tmp = (M_PI/(omega*8)) * (lseg % pow(diam,2));
-    cF = cF.each_col() % tmp;
+    cF = cF.each_col() % ((M_PI/(omega*8)) * (lseg % pow(diam,2)));
 
-
+    // Flag vessels aligned with axes
     ivec flag = zeros<ivec>(nseg);
     for (int iseg = 0; iseg < nseg; iseg++) {
         if (cnode(1,ista(iseg)) == cnode(1,iend(iseg)) && cnode(2,ista(iseg)) == cnode(2,iend(iseg))) {
-            flag(iseg) = 1;
+            flag(iseg) = 1; // Parallel to x-axis
         }
         else if (cnode(0,ista(iseg)) == cnode(0,iend(iseg)) && cnode(2,ista(iseg)) == cnode(2,iend(iseg)))   {
-            flag(iseg) = 2;
+            flag(iseg) = 2; // Parallel to y-axis
         }
         else if (cnode(0,ista(iseg)) == cnode(0,iend(iseg)) && cnode(1,ista(iseg)) == cnode(1,iend(iseg)))   {
-            flag(iseg) = 3;
+            flag(iseg) = 3; // Parallel to z-axis
         }
         else {
-            flag(iseg) = 4;
+            flag(iseg) = 4; // Diagonal vessels
         }
     }
 
 
-    for (int i = 0; i < 3; i++) {
+    int dim{};
+    if (cell2D) {dim = 2;}
+    else {dim = 3;}
+    conductivity.zeros();
+    for (int i = 0; i < dim; i++) {
 
-        vec unit = zeros<vec>(3);
-        unit(i) = 1;
+        vec tissForce = zeros<vec>(3);
+        tissForce(i) = 1;
 
-        mat R;
-        mat force = zeros<mat>(3,nseg);
-        for (int iseg = 0; iseg < nseg; iseg++)   {
-            if (flag(iseg) == i + 1)    {
-                force.col(iseg) = unit;
-            }
-            else if (flag(iseg) == 4)  {
-
-                // Skips if forcing term lies perpendicular to the segment
-                vec y = cnode.col(ista(iseg));
-                vec z = cnode.col(iend(iseg));
-                vec x = y - z;
-                if (x(i) < 0.)  {x = abs(x);}
-                if (dot(unit,x) != 0.0)  {
-                    R = eulerRotation(unit,x);
-                    force.col(iseg) = R*unit;
-                }
-
-            }
+        vec nod1, nod2;
+        mat unitCL = zeros<mat>(nseg, 3);
+        for (int iseg = 0; iseg < nseg; iseg++) {
+            nod1 = cnode.col(ista(iseg));
+            nod2 = cnode.col(iend(iseg));
+            unitCL.row(iseg) = (abs(nod1-nod2) / eucDistance(nod1,nod2)).t();
         }
-
+        vec forcing = unitCL * tissForce;
 
         // Conservation of internal cell flux
-        vec v1 = -cB * (conductance % force.row(i).t());
-
+        vec v1 = -cB * (conductance % forcing);
 
         // Conservation of boundary flux
-        vec v3 = -cE * (conductance % force.row(i).t());
-
+        vec v3 = -cE * (conductance % forcing);
 
         // Conservation of boundary pressures
-        vec v2 = zeros<vec>(nnodbc/2);
+        vec v2 = zeros<vec>(int(nnodbc/2.));
 
         // Volume pressure average
         vec v4 = zeros<vec>(nseg);
-
 
         mat matrix = join_cols(join_cols(join_cols(BA,cC),EA),cF);
         vec vector = join_cols(join_cols(join_cols(v1,v2),v3),v4);
         nodpress = solve(matrix,vector);
 
-
+        // Pressure - mm
         for (int iseg = 0; iseg < nseg; iseg++) {
             cellSegpress(i,iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;
         }
 
         // Conductivity - mm3.s/kg
-        // Pressure - mm
+
         vec p_grad = cA*nodpress;
-        for (int iseg = 0; iseg < nseg; iseg++)   {
-            if (flag(iseg) < 4) {
-                conductivity.col(i) -= conductance(iseg) * (p_grad(iseg) - force.col(iseg)) * lseg(iseg) / omega;
-            }
-            else {
-                int yy = (int) ista(iseg);
-                int zz = (int) iend(iseg);
-                vec y = cnode.col(ista(iseg));
-                vec z = cnode.col(iend(iseg));
-                vec x = y - z;
-                if (x(i) < 0.)  {
-                    x = z - y;
-                }
-
-                R = eulerRotation(unit,x);
-                force.col(iseg) = R*unit;
-
-                if (dot(unit,x) == 0.0) {
-                    force.col(iseg).fill(0);
-                }
-
-                vec res = R.i()*(-0.5*force.col(iseg) * conductance(iseg)) * lseg(iseg) / omega;
-                conductivity.col(i) -= res;
-
-                for (int j = 0; j < 3; j++)  {
-                    //cout<<temp(j)<<"\t"<<x(j)<<"\t"<<nodpress(yy)<<"\t"<<nodpress(zz)<<endl;
-                    if ((cnode(j,yy) < cnode(j,zz) && nodpress(yy) < nodpress(zz)) || (cnode(j,yy) > cnode(j,zz) && nodpress(yy) > nodpress(zz)))  {
-                        //force.col(iseg) *= -1;
-                    }
-
-                }
-
-                if (nodpress(ista(iseg)) > nodpress(iend(iseg)))   {
-                    y = cnode.col(iend(iseg));
-                    z = cnode.col(ista(iseg));
-                }
-                else {
-                    y = cnode.col(ista(iseg));
-                    z = cnode.col(iend(iseg));
-                }
-                x = y - z;
-                R = eulerRotation(unit,x);
-                x = x / norm(x);
-
-                res = conductance(iseg) * (R.i()*(x * p_grad(iseg))) * lseg(iseg) / omega;
-                conductivity.col(i) -= res;
-
-            }
-
+        for (int iseg = 0; iseg < nseg; iseg++) {
+            conductivity.col(i) -= (conductance(iseg) * lseg(iseg) / omega) * (p_grad(iseg) - forcing(iseg)) * unitCL.row(iseg).t();
         }
 
 
