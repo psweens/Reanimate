@@ -16,6 +16,7 @@ void MicroCell::setup_microCellArrays()  {
 
     nodsegm = 10;
     computeLseg = 1;
+
     setup_networkArrays();
 
     segname = zeros<ivec>(nseg);
@@ -38,8 +39,8 @@ void MicroCell::setup_mcFlowArrays() {
     c = zeros<vec>(nseg);
 
     cA = zeros<mat>(nseg,nnod);
-    cC = zeros<mat>(nnodbc/2.,nnod);
-    cE = zeros<mat>(nnodbc/2.,nseg);
+    cC = zeros<mat>(int(nnodbc/2.),nnod);
+    cE = zeros<mat>(int(nnodbc/2.),nseg);
     cF = zeros<mat>(nseg,nnod);
     conductivity = zeros<mat>(3,3);
 

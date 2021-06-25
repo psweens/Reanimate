@@ -103,13 +103,13 @@ void DiscreteContinuum::addDummies()    {
                     discreteNet.segnodname(0,jseg) = discreteNet.nodname(inod);
                     discreteNet.segnodname(1,jseg) = discreteNet.nodname(jnod);
                     discreteNet.diam.resize(jseg+1);
-                    discreteNet.diam(jseg) = capDiam;
-                    //if (discreteNet.vesstyp(iseg) == 1) {discreteNet.diam(jseg) = artDiam;}
-                    //else if (discreteNet.vesstyp(iseg) == 3)    {discreteNet.diam(jseg) = venDiam;}
+                    //discreteNet.diam(jseg) = capDiam;
+                    if (discreteNet.vesstyp(iseg) == 1) {discreteNet.diam(jseg) = artDiam;}
+                    else if (discreteNet.vesstyp(iseg) == 3)    {discreteNet.diam(jseg) = venDiam;}
                     discreteNet.rseg.resize(jseg+1);
                     discreteNet.rseg(jseg) = 0.5 * discreteNet.diam(jseg);
                     discreteNet.lseg.resize(jseg+1);
-                    discreteNet.lseg(jseg) = capLseg;
+                    discreteNet.lseg(jseg) = 5.0;//capLseg;
                     discreteNet.q.resize(jseg+1);
                     discreteNet.qq.resize(jseg+1);
                     discreteNet.qq(jseg) = discreteNet.qq(iseg);

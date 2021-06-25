@@ -125,7 +125,7 @@ void MicroCell::hexCell2D() {
 
 void MicroCell::crossCell2D() {
 
-    if (rotationAngle == 0.0)   {rotationAngle= M_PI / 4.;};
+    cell2D = true;
 
     nnod = 5;
     nnodbc = 4;
@@ -142,39 +142,37 @@ void MicroCell::crossCell2D() {
     int n = 1;
     double L1 = sum(lognormal(l_mean, l_SD, n));
     double L2 = sum(lognormal(l_mean, l_SD, n));
-    double L3 = sum(lognormal(l_mean, l_SD, n));
 
     // Randomly assign diameters based on lognormal distribution
     double d_mean = mean(diamDistrib);
     double d_SD = stddev(diamDistrib);
     for (int iseg = 0; iseg < nseg; iseg++)   {diam(iseg) = sum(lognormal(d_mean, d_SD, n));}
+
     rseg = diam / 2.0;
 
     // Setup nodal coordinates
     cnode(1,0) = L2;
-    cnode(2,0) = L3;
 
     cnode(0,1) = L1;
     cnode(1,1) = L2;
-    cnode(2,1) = L3;
 
     cnode(0,2) = 2*L1;
     cnode(1,2) = L2;
-    cnode(2,2) = L3;
 
     cnode(0,3) = L1;
-    cnode(2,3) = L3;
 
     cnode(0,4) = L1;
     cnode(1,4) = 2*L2;
-    cnode(2,4) = L3;
+    if (abs(rotationAngle) > 0.)    {
+        mat rotate = zeros<mat>(3,3);
+        rotate(0,0) = cos(rotationAngle);
+        rotate(0,1) = -sin(rotationAngle);
+        rotate(1,0) = sin(rotationAngle);
+        rotate(1,1) = cos(rotationAngle);
+        rotate(2,2) = 1;
+        for (int inod = 0; inod < nnod; inod++)   {cnode.col(inod) = rotate * cnode.col(inod);}
+    }
 
-/*    cnode(0,5) = L1;
-    cnode(1,5) = L2;
-
-    cnode(0,6) = L1;
-    cnode(1,6) = L2;
-    cnode(2,6) = 2*L3;*/
 
     // Define node connections
     ista(0) = 0;
@@ -190,6 +188,7 @@ void MicroCell::crossCell2D() {
 
     // Organise cell dimensions
     findBoundingBox();
+    alz = max(diam);
 
     // Compute lseg vector
     findLengths();
@@ -220,15 +219,6 @@ void MicroCell::crossCell2D() {
         else if (cnode(1,bcnod(inodbc)) == aly) {Bout(inodbc) = 1;}
     }
 
-    mat rotate = zeros<mat>(3,3);
-    rotate(0,0) = cos(rotationAngle);
-    rotate(0,1) = -sin(rotationAngle);
-    rotate(1,0) = sin(rotationAngle);
-    rotate(1,1) = cos(rotationAngle);
-    rotate(2,2) = 1;
-    for (int inod = 0; inod < nnod; inod++)   {cnode.col(inod) = rotate * cnode.col(inod);}
-    findBoundingBox();
-
     // Print micro-cell image
     pictureNetwork("MicroCellDiameters.ps", diam);
 
@@ -236,8 +226,6 @@ void MicroCell::crossCell2D() {
 
 
 void MicroCell::crossCell3D() {
-
-    if (rotationAngle == 0.0)   {rotationAngle= M_PI / 4.;};
 
     nnod = 7;
     nnodbc = 6;
@@ -287,6 +275,17 @@ void MicroCell::crossCell3D() {
     cnode(0,6) = L1;
     cnode(1,6) = L2;
     cnode(2,6) = 2*L3;
+
+    if (abs(rotationAngle) > 0.) {
+        mat rotate = zeros<mat>(3, 3);
+        rotate(0, 0) = cos(rotationAngle);
+        rotate(0, 1) = -sin(rotationAngle);
+        rotate(1, 0) = sin(rotationAngle);
+        rotate(1, 1) = cos(rotationAngle);
+        rotate(2, 2) = 1;
+        for (int inod = 0; inod < nnod; inod++) { cnode.col(inod) = rotate * cnode.col(inod); }
+    }
+
 
     // Define node connections
     ista(0) = 0;
@@ -339,15 +338,6 @@ void MicroCell::crossCell3D() {
         if (cnode(2,bcnod(inodbc)) == 0.)  {Bin(inodbc) = 1;}
         else if (cnode(2,bcnod(inodbc)) == alz) {Bout(inodbc) = 1;}
     }
-
-    mat rotate = zeros<mat>(3,3);
-    rotate(0,0) = cos(rotationAngle);
-    rotate(0,1) = -sin(rotationAngle);
-    rotate(1,0) = sin(rotationAngle);
-    rotate(1,1) = cos(rotationAngle);
-    rotate(2,2) = 1;
-    for (int inod = 0; inod < nnod; inod++)   {cnode.col(inod) = rotate * cnode.col(inod);}
-    findBoundingBox();
 
     // Print micro-cell image
     pictureNetwork("MicroCellDiameters.ps", diam);

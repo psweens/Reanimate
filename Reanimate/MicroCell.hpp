@@ -19,6 +19,7 @@ namespace reanimate {
 
     public:
 
+        bool cell2D;
         double kappa{},rotationAngle{},netVol{},vascDens{},lsegDens{},surfDens{},surfVolRatio{},R{},aniScaleY{1.},aniScaleZ{1.};
         vec diamDistrib, lengthDistrib;
         mat conductivity,cellSegpress;

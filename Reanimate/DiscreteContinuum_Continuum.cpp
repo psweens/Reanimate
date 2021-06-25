@@ -21,7 +21,7 @@ void DiscreteContinuum::computeContinuum()  {
     setup_continuumArrays();
     distribSource();
 
-    optKappa = 0.0003055;// mm3.s/kg
+    optKappa = cell.kappa; // mm3.s/kg
 
     printText("Calculating capillary drainage via Newton-Raphson scheme");
     NewtRaph();
@@ -42,9 +42,10 @@ void DiscreteContinuum::distribSource() {
     vec x, y;
     for (int i = 0; i < (int) sourceIdx.n_elem; i++)    {
         x = discreteNet.cnode.col(discreteNet.bcnod(sourceIdx(i)));
-        for (int j = 0; j < (int) sourceIdx.n_elem; j++)    {
+        for (int j = i; j < (int) sourceIdx.n_elem; j++)    {
             y = discreteNet.cnode.col(discreteNet.bcnod(sourceIdx(j)));
             rnod(i,j) = eucDistance(x, y);
+            rnod(j,i) = eucDistance(x, y);
         }
         for (int iseg = 0; iseg < discreteNet.getNseg(); iseg++) {
             if (discreteNet.bcnod(sourceIdx(i)) == discreteNet.ista(iseg) || discreteNet.bcnod(sourceIdx(i)) == discreteNet.iend(iseg)) {
@@ -61,6 +62,12 @@ void DiscreteContinuum::distribSource() {
     ivec fixed = zeros<ivec>(nnodT);
     mat tmp = rnod(find(rnod > 0.));
     r0.fill(r0.min());
+    vec store;
+    for (int i = 0; i < nnodT; i++) {
+        store = rnod.col(i);
+        store = store(find(store > 0.));
+        r0(i) = 0.5*store.min();
+    }
     /*while (!stable && iter < nitmax) {
         for (int i = 0; i < nnodT; i++) {
             if (fixed(i) == 0)  {
@@ -82,7 +89,7 @@ void DiscreteContinuum::distribSource() {
         iter += 1;
     }
     if (iter == nitmax) {printText("Sphere packing not converged",5);}*/
-    r0.fill(0.5*tmp.min());
+    //r0.fill(0.5*tmp.min());
 
 }
 

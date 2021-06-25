@@ -64,8 +64,8 @@ void DiscreteContinuum::computeDiscrete()  {
     vec storeqq = discreteNet.qq;
     Mnet = zeros<mat>(nnodT,nnodT);
 
-    discreteNet.bchd.fill(0.45);
-    discreteNet.hd.fill(0.45);
+    discreteNet.bchd.fill(consthd);
+    discreteNet.hd.fill(consthd);
     discreteNet.rheolParams();
     discreteNet.printNetwork("Branch_Network.txt");
     discreteNet.scaleNetwork(1.e-3);
@@ -82,7 +82,6 @@ void DiscreteContinuum::computeDiscrete()  {
             }
         }
 
-
         if (discreteNet.BCgeo(sourceIdx(i)) == 1) {
             n = 0;
             discreteNet.bcprfl(sourceIdx(i)) = -1.;
@@ -94,16 +93,13 @@ void DiscreteContinuum::computeDiscrete()  {
             if (discreteNet.bcprfl(sourceIdx(i)) == -1.)  {n = 0;}
         }
 
-
         discreteNet.setup_flowArrays();
         discreteNet.splitHD(&Network::fullSolver, graph);
         for (int inodbc = 0; inodbc < discreteNet.getNnodbc(); inodbc++)    {
             discreteNet.BCpress(inodbc) = discreteNet.nodpress(discreteNet.bcnod(inodbc));
         }
 
-
         Mnet.col(i) = pow(-1.,n)*(Pa_Pv(i) - discreteNet.BCpress(sourceIdx));
-
 
         discreteNet.bcprfl = storeBC;
         discreteNet.bctyp = storeBCtyp;
