@@ -234,10 +234,88 @@ void spatGraph::defineTrunk()   {
 
 }
 
-void spatGraph::analyseTopology(imat predefinedInput)   {
+void spatGraph::analyseTopology(imat predefinedInput, Network &network)   {
 
     printText("Vessel Classification Module", 3);
     printText("Loading network trunks");
+
+    popInletsOutlets(predefinedInput);
+
+    classifyNetwork(InOutlets, geometry);
+
+    uvec art = find(geometry == 1);
+    uvec cap = find(geometry == 2);
+    uvec ven = find(geometry == 3);
+    printNum("Arterioles (%) =", 100*double(art.n_elem) / double(nseg));
+    printNum("Capillaries (%) =", 100*double(cap.n_elem) / double(nseg));
+    printNum("Venules (%) =", 100*double(ven.n_elem) / double(nseg));
+    vesstyp = geometry;
+
+    for (int iseg = 0; iseg < network.getNseg(); iseg++)    {
+        for (int jseg = 0; jseg < nseg; jseg++) {
+            if (network.edgeLabels(iseg) == segname(jseg))  {
+                network.vesstyp(jseg) = vesstyp(jseg);
+                jseg = nseg;
+            }
+        }
+    }
+
+}
+
+void spatGraph::loadTrunks(const string &filepath, Network &network) {
+
+    printText("Vessel Classification Module", 3);
+    printText("Loading network trunks");
+
+    int n{}, max{200};
+    char bb[200];
+
+    FILE *data;
+    data = fopen((loadPath + filepath).c_str(),"r");
+    fscanf(data,"%i", &n); fgets(bb,max,data);
+    fgets(bb,max,data);
+
+    imat array = zeros<imat>(n,2);
+    for (int i = 0; i < n; i++) {
+        fscanf(data, "%lli %lli", &array(i,0), &array(i,1));
+    }
+
+    fclose(data);
+
+    analyseTopology(array, network);
+
+}
+
+void spatGraph::findTree(imat input)  {
+
+    popInletsOutlets(input);
+
+    ivec nodvtyp = zeros<ivec>(nnod);
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        if (vesstyp(iseg) == 1 || vesstyp(iseg) == 3)   {
+            nodvtyp(ista(iseg)) = -1;
+            nodvtyp(iend(iseg)) = -1;
+
+        }
+    }
+
+    ivec oldnodtyp = nodvtyp;
+    flagTree = zeros<ivec>(nseg);
+    for (int i = 0; i < (int) input.n_rows; i++)    {
+        dfsBasic(input(i,0), i+1, nodvtyp);
+        for (int iseg = 0; iseg < nseg; iseg++) {
+            if (nodvtyp(ista(iseg)) == i+1 && nodvtyp(iend(iseg)) == i+1)   {
+                flagTree(iseg) = i+1;
+            }
+        }
+        nodvtyp = oldnodtyp;
+    }
+
+    geometry = vesstyp;
+
+}
+
+void spatGraph::popInletsOutlets(imat &predefinedInput)    {
 
     // predefinedInput: col(0) nodname, col(1) arteriole/venule; rows() trunks
     nTrees = predefinedInput.n_rows;
@@ -260,39 +338,5 @@ void spatGraph::analyseTopology(imat predefinedInput)   {
             }
         }
     }
-
-    classifyNetwork(InOutlets, geometry);
-
-    uvec art = find(geometry == 1);
-    uvec cap = find(geometry == 2);
-    uvec ven = find(geometry == 3);
-    printNum("Arterioles (%) =", 100*double(art.n_elem) / double(nseg));
-    printNum("Capillaries (%) =", 100*double(cap.n_elem) / double(nseg));
-    printNum("Venules (%) =", 100*double(ven.n_elem) / double(nseg));
-    vesstyp = geometry;
-
-}
-
-void spatGraph::loadTrunks(const string &filepath) {
-
-    printText("Vessel Classification Module", 3);
-    printText("Loading network trunks");
-
-    int n{}, max{200};
-    char bb[200];
-
-    FILE *data;
-    data = fopen((loadPath + filepath).c_str(),"r");
-    fscanf(data,"%i", &n); fgets(bb,max,data);
-    fgets(bb,max,data);
-
-    imat array = zeros<imat>(n,2);
-    for (int i = 0; i < n; i++) {
-        fscanf(data, "%lli %lli", &array(i,0), &array(i,1));
-    }
-
-    fclose(data);
-
-    analyseTopology(array);
 
 }

@@ -19,8 +19,9 @@ namespace reanimate {
         imat InOutlets;
         void generate(Network &network, bool print=false);
         void defineTrunk();
-        void loadTrunks(const string &filepath);
-        void analyseTopology(imat predefinedInput=NULL);
+        void loadTrunks(const string &filepath, Network &network);
+        void findTree(imat input);
+        void analyseTopology(imat predefinedInput, Network &network);
         void dfsBridge(int v, int p=-1);
         void findBridges();
         void findBridgeheads();
@@ -43,6 +44,7 @@ namespace reanimate {
         sp_mat segnod;
 
         void setup_graphArrays();
+        void popInletsOutlets(imat &input);
         void internalClassificationLoop(const int &init_seg, const int &classify, ivec &geometry, const int &algo_2, const int &tree, ivec &fTree);
 
     };

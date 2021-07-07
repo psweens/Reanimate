@@ -36,6 +36,8 @@ void DiscreteContinuum::runHybrid()    {
 
     // Map geometry classification to full network
     graph.mapClassification(discreteNet);
+    discreteNet.pictureNetwork("Hybrid_Classification.ps",conv_to<vec>::from(discreteNet.vesstyp));
+    Vasculature clone = discreteNet;
 
     // Calculate no. of arterioles/capillaries/venules
     nart = (int) accu(discreteNet.vesstyp(find(discreteNet.vesstyp == 1)));
@@ -43,7 +45,6 @@ void DiscreteContinuum::runHybrid()    {
     nven = (int) accu(discreteNet.vesstyp(find(discreteNet.vesstyp == 3))) / 3;
 
     // Discrete boundary flows
-    // NEED TO FACTOR IN THAT FLOW MAY LEAVE TISSUE VOL. VIA ART/VEN
     artIn = accu(discreteNet.BCflow(find(discreteNet.BCgeo == 1)));
     venOut = accu(discreteNet.BCflow(find(discreteNet.BCgeo == 3)));
     capFlow = accu(discreteNet.BCflow(find(discreteNet.BCgeo == 2)));
@@ -60,5 +61,7 @@ void DiscreteContinuum::runHybrid()    {
 
     plotContour("Hybrid_PressureContourPlot.ps", discreteNet, Pa_Pv.max(), Pa_Pv.min(), false, true, nnodT, nnodT, 60);
     plotContour("Hybrid_SpeedContourPlot.ps", discreteNet, 0., 0., true, false, nnodT, nnodT, 60);
+
+    mapContinuum(clone);
 
 }

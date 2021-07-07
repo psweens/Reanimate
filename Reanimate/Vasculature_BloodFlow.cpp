@@ -3,7 +3,7 @@
 
 using namespace reanimate;
 
-void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memoryEffects, bool updateBCHD){
+void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memoryEffects, bool updateBCHD, bool skipAnalysis){
 
     varviscosity = varViscosity;
     phaseseparation = phaseSeparation;
@@ -62,12 +62,14 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
         networkCopy.splitHD(&Network::fullSolver, hdGraph);
     }
 
-    // Map solved flow to original network
-    mapFlow(networkCopy);
-    computeBoundaryFlow();
+    if (!skipAnalysis)  {
+        // Map solved flow to original network
+        mapFlow(networkCopy);
+        computeBoundaryFlow();
 
-    // Analyse flow
-    analyseVascularFlow();
+        // Analyse flow
+        analyseVascularFlow();
+    }
 
 }
 
@@ -254,9 +256,7 @@ void Vasculature::computeConductance()   {
                 printText( "Viscosity at segment "+to_string(segname(iseg))+", h'crit = "+to_string(hd(iseg)),4);
             }
         }
-        else {
-            visc = constvisc*xi;
-        }
+        else {visc = constvisc*xi;}
         conductance(iseg) = M_PI*pow(tdiam,4)/(128*visc*lseg(iseg));
         c(iseg) = 4*visc/(M_PI*pow(tdiam*0.5,3));
     }

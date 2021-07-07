@@ -24,10 +24,10 @@ namespace reanimate {
 
         string networkName,networkPath,buildPath,loadPath,rLog;
         bool unknownBCs,phaseseparation,silence;
-        int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track,nitmax{};
+        int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track,nitmax{100};
         double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.},tissDensity{},bloodDensity{},consthd{},constvisc{};
         ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,flagTree,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt;
-        vec diam,rseg,lseg,q,qq,vel,hd,bcprfl,bchd,nodpress,BCflow,BCpress,tau,segpress,elseg,ediam;
+        vec diam,rseg,lseg,q,qq,vel,hd,bcprfl,bchd,nodpress,conductance,BCflow,BCpress,tau,segpress,elseg,ediam;
         uvec unknownnod_idx,bcpress_idx;
         imat segnodname,nodnod,nodseg;
         mat cnode,bcp;
@@ -60,6 +60,7 @@ namespace reanimate {
         ivec findDeadends();
         void removeNewBC(ivec storeBCnodname, bool print=false, bool graph=false);
         void setup_networkArrays();
+        void setup_estimationArrays();
         void setup_flowArrays(bool popMatrices=true);
 
 
@@ -122,14 +123,13 @@ namespace reanimate {
         int estimationarraysize{},nIBnod{},nunknown{};
         double mcv{},hdtol{},qtol{},ktau{},oldktau{},kp{},targetpress{};
         ivec unknownnod,storeBCtyp;
-        vec conductance,c,qold,hdold,flowsign,oldFlowsign,tau0,oldTau,Qo,B,p0,storeBC,storeBChd,storeHD,oldHd,oldNodpress,oldq;
+        vec c,qold,hdold,flowsign,oldFlowsign,tau0,oldTau,Qo,B,p0,storeBC,storeBChd,storeHD,oldHd,oldNodpress,oldq;
         sp_mat M,L,K,A,H1,H2,W;
 
         // Topology fn parameters
         double timer;
         ivec visited, tin, low;
 
-        void setup_estimationArrays();
         double pointAverage(const int &pnt, const ivec &pntIdx, const vec &param);
 
     private:

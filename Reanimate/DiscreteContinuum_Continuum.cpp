@@ -11,6 +11,8 @@ void DiscreteContinuum::computeContinuum()  {
     printText("Setting up continuum component");
 
     printText("Scaling coordinates based on anisotropic micro-cell conductivity");
+    //cell.aniScaleY = 0.999;
+    //cell.aniScaleZ = 1.013;
     if (cell.aniScaleY > 0.)   {discreteNet.cnode.row(1) /= cell.aniScaleY;}
     if (cell.aniScaleZ > 0.)   {discreteNet.cnode.row(2) /= cell.aniScaleZ;}
 
@@ -40,7 +42,7 @@ void DiscreteContinuum::distribSource() {
 
     // Define the radial distance between sources points (working in mm)
     vec x, y;
-    for (int i = 0; i < (int) sourceIdx.n_elem; i++)    {
+    for (int i = 0; i < nnodT; i++)    {
         x = discreteNet.cnode.col(discreteNet.bcnod(sourceIdx(i)));
         for (int j = i; j < (int) sourceIdx.n_elem; j++)    {
             y = discreteNet.cnode.col(discreteNet.bcnod(sourceIdx(j)));
@@ -61,14 +63,17 @@ void DiscreteContinuum::distribSource() {
     double oldr0{},separationDist{};
     ivec fixed = zeros<ivec>(nnodT);
     mat tmp = rnod(find(rnod > 0.));
-    r0.fill(r0.min());
+    r0.fill(tmp.min());
     vec store;
     for (int i = 0; i < nnodT; i++) {
         store = rnod.col(i);
         store = store(find(store > 0.));
-        r0(i) = 0.5*store.min();
+        //r0(i) = 0.5*store.min();
+        //r0(i) = discreteNet.nodpress(sourceIdx(i)) * 1.e-6;
     }
-    /*while (!stable && iter < nitmax) {
+
+    /*r0 /= max(discreteNet.nodpress);
+    while (!stable && iter < nitmax) {
         for (int i = 0; i < nnodT; i++) {
             if (fixed(i) == 0)  {
                 oldr0 = r0(i);
@@ -87,9 +92,8 @@ void DiscreteContinuum::distribSource() {
         }
         if (accu(fixed) == nnodT)   {stable = true;}
         iter += 1;
-    }
-    if (iter == nitmax) {printText("Sphere packing not converged",5);}*/
-    //r0.fill(0.5*tmp.min());
+    }*/
+    if (iter == nitmax) {printText("Sphere packing not converged",5);}
 
 }
 
@@ -183,6 +187,8 @@ void DiscreteContinuum::NewtRaph()    {
         logbeta -= dbeta;
 
         if ((logbetaLOW-logbeta)*(logbeta-logbetaHIGH) < 1.e-6)   {printText("Newton-Raphson Method -> logbeta = " + to_string(logbeta),4);}
+        if (logbeta < -10.)  {logbeta *= 1e-6;}
+
         printText( "Flow error = "+to_string(qsum-qact)+", lambda = "+to_string(lambda)+", beta =  "+to_string(pow(10.,logbeta)),1,0);
 
         iter += 1;
@@ -191,7 +197,7 @@ void DiscreteContinuum::NewtRaph()    {
 
     optBeta = pow(10.,logbeta);
     optLambda = sqrt(optBeta/optKappa);
-    printText( "Final: lambda (1/mm) = "+to_string(optLambda)+", beta = "+to_string(optBeta)+", kappa (mm3.s/kg) =  "+to_string(optKappa),1,0);
+    printText( "Final: lambda (1/mm) = "+to_string(optLambda)+", beta (mm.s/kg) = "+to_string(optBeta)+", kappa (mm3.s/kg) =  "+to_string(optKappa),1,0);
 
 }
 

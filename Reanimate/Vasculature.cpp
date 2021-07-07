@@ -44,10 +44,10 @@ void Vasculature::printVisuals()    {
     data.col(4) = tau;
     printAmira("amiraBloodFlow.am", data, true, headers);
 
-    pictureNetwork("NetworkDiameters.ps", diam);
-    pictureNetwork("NetworkPressure.ps", segpress);
-    pictureNetwork("NetworkFlow.ps", qq);
-    pictureNetwork("NetworkWSS.ps", tau);
-    pictureNetwork("NetworkHaematocrit.ps", hd);
+    pictureNetwork("Network_Diameters.ps", diam);
+    pictureNetwork("Network_Pressure.ps", segpress);
+    pictureNetwork("Network_Flow.ps", qq);
+    pictureNetwork("Network_WSS.ps", tau);
+    pictureNetwork("Network_Haematocrit.ps", hd);
 
 }

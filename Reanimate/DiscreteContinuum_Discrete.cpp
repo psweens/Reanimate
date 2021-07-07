@@ -44,7 +44,7 @@ void DiscreteContinuum::computeDiscrete()  {
         }
         else if (sourceBCtyp(inodbc) == -2) {
             discreteNet.bctyp(inodbc) = 1;
-            discreteNet.bcprfl(inodbc) = 0.;
+            discreteNet.bcprfl(inodbc) = discreteNet.BCflow(inodbc);
         }
         else    {
             discreteNet.bctyp(inodbc) = 1;
@@ -53,19 +53,17 @@ void DiscreteContinuum::computeDiscrete()  {
     }
 
 
-
     // Populate Mnet matrix - sequential solver
+    discreteNet.varviscosity = true;
     discreteNet.phaseseparation = false;
     ivec storeBCtyp = discreteNet.bctyp;
-    vec storeBC = discreteNet.bcprfl;
+    storeBC = discreteNet.bcprfl;
     vec storeBCflow = discreteNet.BCflow;
     vec storeBCpress = discreteNet.BCpress;
     vec storeSegpress = discreteNet.segpress;
     vec storeqq = discreteNet.qq;
     Mnet = zeros<mat>(nnodT,nnodT);
 
-    discreteNet.bchd.fill(consthd);
-    discreteNet.hd.fill(consthd);
     discreteNet.rheolParams();
     discreteNet.printNetwork("Branch_Network.txt");
     discreteNet.scaleNetwork(1.e-3);

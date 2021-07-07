@@ -96,11 +96,15 @@ void Network::printRawData(string filename, mat &data, const field<string> &head
     ofp = fopen(filename.c_str(),"w");
 
     for (int i =-1; i < (int) data.n_rows; i++) {
-        if (i == -1)    {fprintf(ofp,"%s \t %s\n",headers(0,0).c_str(),headers(0,1).c_str());}
+        if (i == -1)    {
+            for (int j = 0; j < (int) headers.n_rows; j++) {
+                fprintf(ofp,"%s \t", headers(j,0).c_str());
+            }
+            fprintf(ofp,"\n");
+        }
         else  {
             for (int j = 0; j < (int) data.n_cols; j++) {
                 if (data(i,j) != 0.4)   {fprintf(ofp,"%f \t", data(i,j));}
-
             }
             fprintf(ofp,"\n");
         }

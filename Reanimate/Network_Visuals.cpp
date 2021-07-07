@@ -176,10 +176,13 @@ void Network::plotContour(const string filename, Network &graph, double maxval, 
     vec xsl2 = zeros<vec>(3);
     xsl0(0) = xmin;
     xsl0(1) = ymin;
+    //xsl0(2) = 0.5 * max(graph.cnode.row(2));
     xsl1(0) = xmax;
     xsl1(1) = ymin;
+    //xsl1(2) = 0.5 * max(graph.cnode.row(2));
     xsl2(0) = xmin;
     xsl2(1) = ymax;
+    //xsl2(2) = 0.5 * max(graph.cnode.row(2));
 
     int nlmax = 1;
     double pint = (maxval - minval) / NL;

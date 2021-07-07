@@ -17,7 +17,8 @@ namespace reanimate {
         void rheolParams();
         template <typename Call>
         void splitHD(Call solver, spatGraph &hdGraph);
-        void bloodFlow(bool varviscosity=true, bool phaseseparation=false, bool memoryeffects=false, bool updateBoundaryHD=false);
+        void bloodFlow(bool varviscosity=true, bool phaseseparation=false, bool memoryeffects=false, bool updateBoundaryHD=false, bool skipAnalysis=false);
+        void computeConductance();
         void printSummary();
         void printVisuals();
 
@@ -27,7 +28,6 @@ namespace reanimate {
     protected:
 
         double viscor(const double &d, const double &hd);
-        void computeConductance();
 
     private:
 
