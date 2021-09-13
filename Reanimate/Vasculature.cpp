@@ -32,22 +32,28 @@ void Vasculature::printSummary() {
 
 }
 
-void Vasculature::printVisuals()    {
+void Vasculature::printVisuals(bool amira, bool twoDim)    {
 
-    const char *headers[5] = {"Pressure","Flow","Hd","Velocity","WSS"};
+    qq(find(qq < 1.e-4)).fill(1.e-4);
+    tau(find(tau < 1.e-4)).fill(1.e-4);
 
-    mat data = zeros<mat>(nseg, 5);
-    data.col(0) = segpress;
-    data.col(1) = qq;
-    data.col(2) = hd;
-    data.col(3) = qq;
-    data.col(4) = tau;
-    printAmira("amiraBloodFlow.am", data, true, headers);
+    if (amira)  {
+        const char *headers[5] = {"Pressure","Flow","Hd","Velocity","WSS"};
+        mat data = zeros<mat>(nseg, 5);
+        data.col(0) = segpress;
+        data.col(1) = qq;
+        data.col(2) = hd;
+        data.col(3) = vel;
+        data.col(4) = tau;
+        printAmira("amiraBloodFlow.am", data, true, headers);
+    }
 
-    pictureNetwork("Network_Diameters.ps", diam);
-    pictureNetwork("Network_Pressure.ps", segpress);
-    pictureNetwork("Network_Flow.ps", qq);
-    pictureNetwork("Network_WSS.ps", tau);
-    pictureNetwork("Network_Haematocrit.ps", hd);
+    if (twoDim) {
+        pictureNetwork("Network_Diameters.ps", diam);
+        pictureNetwork("Network_BloodPressure.ps", segpress);
+        pictureNetwork("Network_BloodFlow_log.ps", log(qq));
+        pictureNetwork("Network_WSS_log.ps", log(tau));
+        pictureNetwork("Network_Haematocrit.ps", hd);
+    }
 
 }

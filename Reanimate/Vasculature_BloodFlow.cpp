@@ -21,7 +21,8 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
 
     if (loadDeadEnds)   {
         printText("Reading dead ends");
-        deadEnds = vesstyp;}
+        deadEnds = vesstyp;
+    }
     else {
         deadEnds = networkCopy.findDeadends();
         //vesstyp = deadEnds;
@@ -30,16 +31,18 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
     if (accu(deadEnds) > 0) {
         printText("Removing dead ends",2,0);
         networkCopy.subNetwork(deadEnds, false, false);
+        mat extraD = zeros<mat>(networkCopy.getNseg(), 1);
     }
-    mat extraD = zeros<mat>(networkCopy.getNseg(), 1);
-    networkCopy.printAmira("amiraDeadEnd.am", extraD);
+
 
     spatGraph hdGraph;
     hdGraph.generate(networkCopy, true); // Diameter / length dimensions are in microns (taken from edge data)
+    npoint = networkCopy.npoint;
     if (any(hdGraph.nodtyp == 2) && memoryeffects)   {
         printText( "Type 2 vertex detected. Amending ...",1,0);
         hdGraph.linkEdges();
     }
+
 
     // Millimetre scaling for copied network
     networkCopy.diam *= 1e-3;
@@ -62,14 +65,12 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
         networkCopy.splitHD(&Network::fullSolver, hdGraph);
     }
 
-    if (!skipAnalysis)  {
-        // Map solved flow to original network
-        mapFlow(networkCopy);
-        computeBoundaryFlow();
+    // Map solved flow to original network
+    mapFlow(networkCopy);
+    computeBoundaryFlow();
 
-        // Analyse flow
-        analyseVascularFlow();
-    }
+    // Analyse flow
+    analyseVascularFlow();
 
 }
 
@@ -106,13 +107,13 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
         (this->*solver)();
 
         if (any(q == 0.0))  {printText( "No flow detected",5);
-            /*vec temp = zeros<vec>(nseg);
-            temp(find(q == 0.0)).fill(1.);
-            mat extraD = zeros<mat>(nseg, 1);
-            extraD.col(0) = temp;
-            printAmira("amiraNoFlow.am", extraD);
-            cout<<accu(temp)<<endl;
-            for (int iseg = 0; iseg < nseg; iseg++) {
+//            vec temp = zeros<vec>(nseg);
+//            temp(find(q == 0.0)).fill(1.);
+//            mat extraD = zeros<mat>(nseg, 1);
+//            extraD.col(0) = temp;
+//            printAmira("amiraNoFlow.am", extraD);
+//            cout<<accu(temp)<<endl;
+            /*for (int iseg = 0; iseg < nseg; iseg++) {
                 if (q(iseg) == 0.0) {
                     if (nodtyp(ista(iseg)) == 2)    {
                         cout<<"sta: "<<nodpress(ista(iseg))<<"\t"<<nodpress(iend(iseg))<<endl;
@@ -202,8 +203,8 @@ void Vasculature::iterateFlowDir(spatGraph &hdGraph)   {
         int nflowreversal = (int) accu(abs(flowsign(find(flowsign != oldFlowsign))));
         printText( "Total reversed flow = "+to_string(nflowreversal)+", ktau/kp = "+to_string(ktau/kp)+", tissue perfusion = "+to_string(tissperfusion)+" ml/min/100g",1,0);
         cout<<"Min pressure: "<<nodpress.min() / alpha<<endl;
-        if (ktau / kp > 1 && nflowreversal < 50 && nodpress.min() > 0.0) {nitmax = 200;}
-        else {nitmax = 100;}
+//        if (ktau / kp > 1 && nflowreversal < 50 && nodpress.min() > 0.0) {nitmax = 200;}
+//        else {nitmax = 100;}
 
         // Condition for final flow solution
         if (ktau / kp > 1 && nflowreversal == 0 && nodpress.min() > 0.0) {
@@ -248,6 +249,8 @@ void Vasculature::computeConductance()   {
 
     double visc{};
     double tdiam{};
+    conductance = zeros<vec>(nseg);
+    c = zeros<vec>(nseg);
     for (int iseg = 0; iseg < nseg; iseg++) {
         tdiam = diam(iseg);
         if (varviscosity) {
@@ -359,11 +362,9 @@ void Vasculature::mapFlow(Vasculature &Network) {
     hd(find(noflow == 1)).fill(0.0);
     qq = abs(q);
     if (!unknownBCs)    {
-        for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
         for (int inodbc = 0; inodbc < nnodbc; inodbc++) {BCpress(inodbc) = nodpress(bcnod(inodbc));}
-    }
-    else    {
-        for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
+        bcprfl = BCpress;
+        bctyp.fill(0);
     }
 
     int nnoflow = accu(noflow);

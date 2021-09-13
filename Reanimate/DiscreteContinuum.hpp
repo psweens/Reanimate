@@ -25,6 +25,7 @@ namespace reanimate   {
 
     protected:
 
+        bool terminateNM{false};
         int nart{},ncap{},nven{},nnodD{},nnodB{},nnodT{},nIterLambda{};
         double qact{},qsum{},capFlow{},artIn{},venOut{},capPress{},capLseg{},artDiam{},capDiam{},venDiam{},optKappa{},optLambda{},optBeta{},lambda{};
         ivec sourceTyp,sourceBCtyp,sourceTree;
@@ -41,6 +42,7 @@ namespace reanimate   {
         void analyseBranches();
         void addDummies();
         void bridgeFlow();
+        void packSpheres(int idx=-1, bool repack=false);
         void computeDiscrete();
         void computeContinuum();
         void tissueMat(const double &lambda);

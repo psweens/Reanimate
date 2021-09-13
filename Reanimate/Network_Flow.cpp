@@ -101,6 +101,8 @@ void Network::putrank(Network &sGraph)  {
 void Network::computeBoundaryFlow()  {
 
     int nod{};
+    BCpress = zeros<vec>(nnodbc);
+    BCflow = zeros<vec>(nnodbc);
     for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
         nod = bcnod(inodbc);
         BCpress(inodbc) = nodpress(nod);

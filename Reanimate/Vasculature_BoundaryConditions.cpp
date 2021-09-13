@@ -18,3 +18,25 @@ void Vasculature::assignBoundaryHD() {
     }
 
 }
+
+
+// Approx. cortical pressures for diameters < ~90um (based on Lorthois et al. 2011)
+void Vasculature::cortexBoundaryPress() {
+
+    int seg{};
+    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+        if (bctyp(inodbc) == 0) {
+            seg = nodseg(0,bcnod(inodbc));
+            if (BCgeo(inodbc) == 1) {
+                bcprfl(inodbc) = -0.0287*pow(diam(seg),2) + 2.84884*diam(seg) + 19.966;
+                bctyp(inodbc) = 0;
+            }
+            else if (BCgeo(inodbc) == 3) {
+                bcprfl(inodbc) = -1.e-4 * pow(diam(seg), 3) + 0.0186 * pow(diam(seg),2) - 1.0616 * diam(seg) + 35.04;
+                bctyp(inodbc) = 0;
+            }
+            cout<<bcnodname(inodbc)<<"\t"<<bcprfl(inodbc)<<"\t"<<diam(seg)<<endl;
+        }
+    }
+
+}

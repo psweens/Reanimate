@@ -16,8 +16,10 @@ namespace reanimate {
         int nTrees{},narterioles{},nvenules{};
         double Dr{},Dmin{};
         ivec geometry,isBridge,isBridgehead,flagTree;
-        imat InOutlets;
+        imat InOutlets,segvert;
         void generate(Network &network, bool print=false);
+        void indexVertices(Network &network);
+        void indexPoints(Network &network);
         void defineTrunk();
         void loadTrunks(const string &filepath, Network &network);
         void findTree(imat input);

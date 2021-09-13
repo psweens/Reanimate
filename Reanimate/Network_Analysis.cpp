@@ -1,4 +1,5 @@
 #include "Network.hpp"
+#include "omp.h"
 
 using namespace reanimate;
 
@@ -39,23 +40,29 @@ void Network::analyse_network(bool graph, bool print)   {
 
 void Network::indexSegmentConnectivity() {
 
+    int seg{};
+    bool found = false;
+    #pragma omp parallel for schedule(auto) default(none) shared(nseg, nnod, segnodname, nodname, segname, ista, iend) private(seg, found)
     for (int iseg = 0; iseg < nseg; iseg++)	{
         //Search for nodes corresponding to this segment
         for (int i = 0; i < 2; i++) {
+            seg = segnodname(i,iseg);
             for (int inod = 0; inod < nnod; inod++) {
-                if (nodname(inod) == segnodname(i,iseg))    {
+                if (nodname(inod) == seg)    {
                     if (i == 0) {
                         ista(iseg) = inod;
-                        goto foundit;
+                        inod = nnod;
+                        found = true;
                     }
                     else if (i == 1)    {
                         iend(iseg) = inod;
-                        goto foundit;
+                        inod = nnod;
+                        found = true;
                     }
                 }
             }
-            printText("No matching node found for segname " + to_string(segname(iseg)),4);
-            foundit:;
+            if (!found) {printText("No matching node found for segname " + to_string(segname(iseg)),4);}
+            else {found = false;}
         }
     }
 }
@@ -66,9 +73,10 @@ void Network::indexNodeConnectivity()   {
     // Setup nodtyp, nodseg and nodnod
     // 'nodseg' -> for each nodes, store the corresponding segment index
     // 'nodnod' -> for each node, store the nodal index of the opposite side of the segment
+    int inod1{},inod2{};
     for (int iseg = 0; iseg < nseg; iseg++) {
-        int inod1 = (int) ista(iseg);
-        int inod2 = (int) iend(iseg);
+        inod1 = (int) ista(iseg);
+        inod2 = (int) iend(iseg);
         nodtyp(inod1) += 1;
         nodtyp(inod2) += 1;
         if (nodtyp(inod1) > nodsegm) {
@@ -162,7 +170,7 @@ void Network::dfsBasic(int v, int tag, ivec &track, bool nodeCondition, int type
         track(v) = tag;
         for (int i = 0; i < n; i++)    {
             to = nodnod(i, v);
-            if (track(to) == -1)   {dfsBasic(to, tag,track, nodeCondition, type);}
+            if (track(to) == -1)   {dfsBasic(to, tag,track);}
         }
     }
 
@@ -192,6 +200,24 @@ void Network::doubleDfs(int v, int tag, double val, ivec &track, vec &param, str
             for (int i = 0; i < n; i++)    {
                 to = nodnod(i, v);
                 if (track(to) == -1)   {doubleDfs(to, tag, val, track, param, cond);}
+            }
+        }
+    }
+
+}
+
+
+void Network::dfsBranch(int v, int tag, ivec &track, int maxBranch)  {
+
+    int to{};
+    int n = nodtyp(v);
+    if (n > 2)  {branch += 1;}
+    if (branch <= maxBranch)  {
+        track(v) = tag;
+        for (int i = 0; i < n; i++)    {
+            to = nodnod(i, v);
+            if (abs(diam(nodseg(i, v))) > 9.)  {
+                if (track(to) == -1)   {dfsBranch(to, tag, track, maxBranch);}
             }
         }
     }
@@ -282,10 +308,8 @@ void Network::edgeNetwork() {
 double Network::nodeAverage(const int &inod, const vec &param)    {
 
     double var{};
-    for (int iseg= 0; iseg < nseg; iseg++)  {
-        if (ista(iseg) == inod || iend(iseg) == inod) {
-            var += param(iseg);
-        }
+    for (int jnod = 0; jnod < nodtyp(inod); jnod++) {
+        var += param(nodseg(jnod,inod));
     }
 
     return var /= nodtyp(inod);

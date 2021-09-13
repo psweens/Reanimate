@@ -169,6 +169,7 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
     }
     else    {
         printText("Network file -> Invalid Boundary Node Format",4);
+        if (nnodbc == 0)    {findBoundaryNodes();}
     }
     
     fclose(ifp);
@@ -179,6 +180,12 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
     analyse_network();
     edgeNetwork();
     printNetwork("loadedNetworkFile.txt");
+
+    if (num == 5)   {
+        segpress = zeros<vec>(nseg);
+        for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
+        computeBoundaryFlow();
+    }
 
     field<string> headers(2,1);
     headers(0,0) = "Diameter";
@@ -249,7 +256,6 @@ void Network::subNetwork(ivec &index, bool graph, bool print) {
     bctyp = zeros<ivec>(nnodbc);
     bcprfl = zeros<vec>(nnodbc);
     bchd = zeros<vec>(nnodbc);
-    bchd = zeros<vec>(nnodbc);
     BCgeo = zeros<ivec>(nnodbc);
     
     int jnodbc = 0;
@@ -306,5 +312,28 @@ void Network::removeNewBC(ivec storeBCnodname, bool print, bool graph) {
         if (removeBridge(ista(iseg)) == 1 && removeBridge(iend(iseg)) == 1) {removeSegments(iseg) = 1;}
     }
     subNetwork(removeSegments, graph, print);
+
+}
+
+void Network::findBoundaryNodes()    {
+
+    setup_networkArrays();
+    indexSegmentConnectivity();
+
+    int inod1{},inod2{};
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        inod1 = (int) ista(iseg);
+        inod2 = (int) iend(iseg);
+        nodtyp(inod1) += 1;
+        nodtyp(inod2) += 1;
+    }
+    uvec idx = find(nodtyp == 1);
+    nnodbc = (int) idx.n_elem;
+
+    bcnodname = nodname(idx);
+    bctyp = 3 * ones<ivec>(nnodbc);
+    bcprfl = zeros<vec>(nnodbc);
+    bchd = consthd * ones<vec>(nnodbc);
+    BCgeo = zeros<ivec>(nnodbc);
 
 }

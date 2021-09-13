@@ -61,6 +61,7 @@ void spatGraph::generate(Network &network, bool print)  {
 
 
     // Finding edge vertices
+    uvec idx;
     ivec flagLoop = zeros<ivec>(nseg);
     segnodname = zeros<imat>(2,nseg);
     ngraphTag = zeros<ivec>(nnod);
@@ -73,9 +74,19 @@ void spatGraph::generate(Network &network, bool print)  {
             }
         }
         if (min(nodtyp(find(nodtyp))) == 1)   {
-            uvec idx = find(nodtyp == 1);
+            idx = find(nodtyp == 1);
             segnodname(0, jseg) = network.nodname(idx(1));
             segnodname(1, jseg) = network.nodname(idx(0));
+        }
+        else {
+            printText("Loop detected for edge "+to_string(segname(jseg)),5);
+            idx = find(nodtyp > 0);
+            for (int inod = 0; inod < (int) idx.n_elem; inod++)    {
+                if (nodtyp(idx(inod)) != network.nodtyp(idx(inod))) {
+                    segnodname(0, jseg) = network.nodname(idx(inod));
+                    segnodname(1, jseg) = network.nodname(idx(inod));
+                }
+            }
         }
     }
 
@@ -140,6 +151,106 @@ void spatGraph::generate(Network &network, bool print)  {
         int inod2 = (int) iend(iseg);
         segnod(inod1,inod2) = iseg;
         segnod(inod2,inod1) = iseg;
+    }
+
+    // Find and store vertex indices in full network
+    indexVertices(network);
+
+    // Find points per edge and label vertices
+    indexPoints(network);
+
+}
+
+
+void spatGraph::indexVertices(Network &network)    {
+
+    int nod1{},nod2{},found{};
+    segvert = zeros<imat>(2, nseg);
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        nod1 = segnodname(0,iseg);
+        nod2 = segnodname(1,iseg);
+        if (nod1 == nod2)   {
+            // Loops
+            for (int inod = 0; inod < network.getNnod(); inod++)    {
+                if (nod1 == network.nodname(inod))  {
+                    segvert(0,iseg) = inod;
+                    segvert(1,iseg) = inod;
+                }
+            }
+        }
+        else {
+            found = 0;
+            for (int inod = 0; inod < network.getNnod(); inod++)    {
+                if (nod1 == network.nodname(inod))   {
+                    segvert(0,iseg) = inod;
+                    found += 1;
+                    if (found == 2) {inod = nnod;}
+                }
+                else if (nod2 == network.nodname(inod))  {
+                    segvert(1,iseg) = inod;
+                    found += 1;
+                    if (found == 2) {inod = nnod;}
+                }
+            }
+            if (found == 0) {printText("Vertex not found for edge " + to_string(segname(iseg)),4);}
+        }
+    }
+
+}
+
+
+void spatGraph::indexPoints(Network &network)    {
+
+    uvec idx;
+    edgePnts = zeros<ivec>(nseg);
+    for (int iseg = 0; iseg < nseg; iseg++)  {
+        idx = find(segname(iseg) == network.edgeLabels);
+        edgePnts(iseg) = (int) idx.n_elem + 1;
+    }
+    network.npoint = accu(edgePnts);
+
+    // Log full network node indices in order from start to end vertices
+    int nod1,nod2{},enod{},pnt{},npnts{},maxpnts=(int) max(edgePnts);
+    ivec tag{};
+    segpoints = zeros<imat>(maxpnts, nseg);
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        npnts = edgePnts(iseg);
+        if (npnts == 2)    {
+            // Loops
+            segpoints(0,iseg) = segvert(0, iseg);
+            segpoints(1, iseg) = segvert(1, iseg);
+        }
+        else {
+            nod2 = -1;
+            idx = find(segname(iseg) == network.edgeLabels);
+            tag = zeros<ivec>((int) idx.n_elem);
+
+            pnt = 0;
+            nod1 = segvert(0, iseg);
+            enod = segvert(1, iseg);
+            segpoints(pnt, iseg) = nod1;
+            pnt += 1;
+            while (nod2 != enod) {
+                for (int jseg = 0; jseg < (int) idx.n_elem; jseg++) {
+                    if (network.ista(idx(jseg)) == nod1 && tag(jseg) == 0) {
+                        nod2 = network.iend(idx(jseg));
+                        nod1 = nod2;
+                        tag(jseg) = 1;
+                        segpoints(pnt, iseg) = nod1;
+                        pnt += 1;
+                        jseg = idx.n_elem;
+                    }
+                    else if (network.iend(idx(jseg)) == nod1 && tag(jseg) == 0) {
+                        nod2 = network.ista(idx(jseg));
+                        nod1 = nod2;
+                        tag(jseg) = 1;
+                        segpoints(pnt, iseg) = nod1;
+                        pnt += 1;
+                        jseg = idx.n_elem;
+                    }
+                }
+            }
+        }
     }
 
 }
@@ -302,7 +413,12 @@ void spatGraph::findTree(imat input)  {
     ivec oldnodtyp = nodvtyp;
     flagTree = zeros<ivec>(nseg);
     for (int i = 0; i < (int) input.n_rows; i++)    {
-        dfsBasic(input(i,0), i+1, nodvtyp);
+        for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+            if (bcnodname(inodbc) == input(i,0))    {
+                dfsBasic(inodbc, i+1, nodvtyp);
+                inodbc = nnodbc;
+            }
+        }
         for (int iseg = 0; iseg < nseg; iseg++) {
             if (nodvtyp(ista(iseg)) == i+1 && nodvtyp(iend(iseg)) == i+1)   {
                 flagTree(iseg) = i+1;

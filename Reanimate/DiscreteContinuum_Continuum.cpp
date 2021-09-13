@@ -11,8 +11,6 @@ void DiscreteContinuum::computeContinuum()  {
     printText("Setting up continuum component");
 
     printText("Scaling coordinates based on anisotropic micro-cell conductivity");
-    //cell.aniScaleY = 0.999;
-    //cell.aniScaleZ = 1.013;
     if (cell.aniScaleY > 0.)   {discreteNet.cnode.row(1) /= cell.aniScaleY;}
     if (cell.aniScaleZ > 0.)   {discreteNet.cnode.row(2) /= cell.aniScaleZ;}
 
@@ -26,7 +24,49 @@ void DiscreteContinuum::computeContinuum()  {
     optKappa = cell.kappa; // mm3.s/kg
 
     printText("Calculating capillary drainage via Newton-Raphson scheme");
-    NewtRaph();
+/*    NewtRaph();
+    while (terminateNM) {
+        printText("Updating hydraulic conductivity");
+        terminateNM = false;
+        optKappa *= 0.8;
+        NewtRaph();
+    }*/
+    int iter{};
+    double oldmse{1.e3};
+    bool optimiseHybrid = true;
+    bool foundkappa = false;
+    vec closestNeighbour = zeros<vec>(nnodT);
+    for (int i = 0; i < nnodT; i++) {
+        vec tmp = rnod.col(i);
+        tmp = tmp(find(tmp > 0.));
+        closestNeighbour(i) = min(tmp);
+    }
+    while (optimiseHybrid && iter < nitmax) {
+        NewtRaph();
+        vec dSourcePress = discreteNet.BCpress(sourceIdx);
+        vec maxSquareError = MaxSE(dSourcePress, pout);
+        if (!terminateNM)   {foundkappa = true;}
+        if (terminateNM && !foundkappa)    {
+            printText("Updating hydraulic conductivity");
+            optKappa *= 0.8;
+            terminateNM = false;
+        }
+        else if (maxSquareError(0) > 5.*MedianSE(dSourcePress, pout) && oldmse > maxSquareError(0)) {
+            cout<<"here"<<endl;
+            cout<<maxSquareError(0)<<endl;
+            cout<<MedianSE(dSourcePress, pout)<<endl;
+            int idx = maxSquareError(1);
+            if (dSourcePress(idx) > pout(idx))  {
+                if (r0(idx) * 1.2 < closestNeighbour(idx)) {r0(idx) *= 1.2;}
+                else {optimiseHybrid = false;}
+            }
+            else {r0(idx) *= 0.8;}
+            if (optimiseHybrid) {packSpheres(idx,true);}
+        }
+        else {optimiseHybrid = false;}
+        iter += 1;
+        oldmse = maxSquareError(0);
+    }
 
     printText("Populating tissue matrix");
     tissueMat(optLambda);
@@ -57,43 +97,8 @@ void DiscreteContinuum::distribSource() {
     }
 
 
-    // Initialise source r0 based on associate vascular r0
-    bool stable = false;
-    int iter{},nitmax=1e3;
-    double oldr0{},separationDist{};
-    ivec fixed = zeros<ivec>(nnodT);
-    mat tmp = rnod(find(rnod > 0.));
-    r0.fill(tmp.min());
-    vec store;
-    for (int i = 0; i < nnodT; i++) {
-        store = rnod.col(i);
-        store = store(find(store > 0.));
-        //r0(i) = 0.5*store.min();
-        //r0(i) = discreteNet.nodpress(sourceIdx(i)) * 1.e-6;
-    }
-
-    /*r0 /= max(discreteNet.nodpress);
-    while (!stable && iter < nitmax) {
-        for (int i = 0; i < nnodT; i++) {
-            if (fixed(i) == 0)  {
-                oldr0 = r0(i);
-                r0(i) *= 1.05;
-                for (int j = 0; j < nnodT; j++) {
-                    if (i != j) {
-                        separationDist = rnod(i,j) - r0(i) - r0(j);
-                        if (separationDist <= 0.) {
-                            fixed(i) = 1;
-                            r0(i) = oldr0;
-                            j = nnodT;
-                        }
-                    }
-                }
-            }
-        }
-        if (accu(fixed) == nnodT)   {stable = true;}
-        iter += 1;
-    }*/
-    if (iter == nitmax) {printText("Sphere packing not converged",5);}
+    // Pack source spheres to touching distance
+    packSpheres();
 
 }
 
@@ -164,14 +169,16 @@ void DiscreteContinuum::NewtRaph()    {
     logbeta = -1.e-8;
 
     qsum = 0.0;
-    int nitmax = 1e3;
+    int nitmax = 1e2;
     int iter = 1;
     double iBeta{};
+    double oldlogbeta{};
     while(abs(qsum-qact) >  1.e-3 && iter <= nitmax)   {
 
         printText(to_string(iter)+"/"+to_string(nitmax)+": ",1, -1);
 
         iBeta = pow(10.,logbeta);
+        oldlogbeta = logbeta;
         lambda = sqrt(iBeta/optKappa);
 
         capHomogenisation(iBeta, lambda);
@@ -187,17 +194,28 @@ void DiscreteContinuum::NewtRaph()    {
         logbeta -= dbeta;
 
         if ((logbetaLOW-logbeta)*(logbeta-logbetaHIGH) < 1.e-6)   {printText("Newton-Raphson Method -> logbeta = " + to_string(logbeta),4);}
-        if (logbeta < -10.)  {logbeta *= 1e-6;}
-
+        if (logbeta < -10.)  {
+            iter = nitmax + 1;
+            terminateNM = true;
+        }
         printText( "Flow error = "+to_string(qsum-qact)+", lambda = "+to_string(lambda)+", beta =  "+to_string(pow(10.,logbeta)),1,0);
 
         iter += 1;
 
     }
-
-    optBeta = pow(10.,logbeta);
+    if (terminateNM) {
+        printText("Floating-point error -> Newton method terminated",4);
+        optBeta = pow(10.,oldlogbeta);
+    }
+    else {
+        optBeta = pow(10.,logbeta);
+        if (iter > nitmax)  {
+            printText("Conservation of flow not achieved",4);
+            terminateNM = true;
+        }
+    }
     optLambda = sqrt(optBeta/optKappa);
-    printText( "Final: lambda (1/mm) = "+to_string(optLambda)+", beta (mm.s/kg) = "+to_string(optBeta)+", kappa (mm3.s/kg) =  "+to_string(optKappa),1,0);
+    printText( "Final: lambda (1/mm) = "+to_string(optLambda)+", beta (mm.s/kg) = "+to_string(optBeta)+", kappa (mm3.s/kg) =  "+to_string(optKappa),1,1);
 
 }
 

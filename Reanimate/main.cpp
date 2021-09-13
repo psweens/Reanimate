@@ -10,6 +10,24 @@ using namespace std;
 
 int main(int argc, char** argv) {
 
+    omp_set_num_threads(48);
+
+/*    Network medulla;
+    medulla.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
+    medulla.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
+    medulla.setBuildPath(false);
+    medulla.lthresh = 10.;
+    medulla.readAmira("GPUdeconvolved_40_iterations_GL1200_substack_div5-SptGraph.am", "MedullaLRG");*/
+
+    FILE *data;
+    data = fopen("/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/Medulla_Trees.txt","r");
+    int n = 32;
+    imat array = zeros<imat>(n,2);
+    for (int i = 0; i < n; i++) {
+        fscanf(data, "%lli %lli", &array(i,0), &array(i,1));
+    }
+    fclose(data);
+
     // Generate discrete flow solution
     DiscreteContinuum hybrid;
     hybrid.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
@@ -17,24 +35,138 @@ int main(int argc, char** argv) {
     hybrid.discreteNet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
     hybrid.discreteNet.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
     hybrid.discreteNet.setBuildPath(true);
-    hybrid.discreteNet.loadNetwork("Medulla.txt");
+    hybrid.discreteNet.loadNetwork("MedullaSolved.txt");
+    hybrid.discreteNet.setStackSize();
+    hybrid.discreteNet.loadDeadEnds = true;
 
-    hybrid.discreteNet.pictureNetwork("Network_Diameter.ps",hybrid.discreteNet.diam);
+/*    ivec flag = zeros<ivec>(hybrid.discreteNet.getNseg());
+    flag(find(abs(hybrid.discreteNet.q) < 2.)).fill(1);
+    hybrid.discreteNet.subNetwork(flag);*/
+
+/*    const char *headers[1] = {"Vesstyp"};
+    mat data3 = zeros<mat>(hybrid.discreteNet.getNseg(), 1);
+    data3.col(0) = conv_to<vec>::from(hybrid.discreteNet.vesstyp);
+    hybrid.discreteNet.printAmira("test.am", data3, true, headers);
+
+    ivec flag = zeros<ivec>(hybrid.discreteNet.getNseg());
+    flag(find(hybrid.discreteNet.vesstyp == 2)).fill(1);
+    hybrid.discreteNet.subNetwork(flag);
+    hybrid.discreteNet.printAmira("test2.am");*/
+
+//    spatGraph test;
+//    test.generate(hybrid.discreteNet);
+
+//    const char *headers[5] = {"Pressure","Flow","Hd","Velocity","WSS"};
+//    mat data1 = zeros<mat>(hybrid.discreteNet.getNseg(), 5);
+//    hybrid.discreteNet.printAmira("test.am", data1, true, headers);
+
+/*    for (int inod = 0; inod < n; inod++)    {
+        uvec jdx = find(hybrid.discreteNet.bcnodname == array(inod, 0));
+        hybrid.discreteNet.bctyp(jdx(0)) = 0;
+        hybrid.discreteNet.BCgeo(jdx(0)) = array(inod,1);
+    }
+    hybrid.discreteNet.cortexBoundaryPress();*/
+
+
+/*    vec diamAvg = zeros<vec>(hybrid.discreteNet.getNnod());
+    for (int inod = 0; inod < hybrid.discreteNet.getNnod(); inod++) {
+        diamAvg(inod) = hybrid.discreteNet.nodeAverage(inod, hybrid.discreteNet.diam);
+    }
+
+    // Initial branches
+    ivec track = -ones<ivec>(hybrid.discreteNet.getNnod());
+    for (int inodbc = 0; inodbc < hybrid.discreteNet.getNnodbc(); inodbc++) {
+        if (diamAvg(hybrid.discreteNet.bcnod(inodbc)) > 10. &&
+        (hybrid.discreteNet.cnode(2,hybrid.discreteNet.bcnod(inodbc)) > 0.9*hybrid.discreteNet.alz
+        || hybrid.discreteNet.cnode(2,hybrid.discreteNet.bcnod(inodbc)) < 0.1*hybrid.discreteNet.alz))    {
+            hybrid.discreteNet.doubleDfs(hybrid.discreteNet.bcnod(inodbc), 1.0, 10., track, diamAvg, "GT");
+        }
+    }
+    vec flag1 = zeros<vec>(hybrid.discreteNet.getNseg());
+    for (int iseg = 0; iseg < hybrid.discreteNet.getNseg(); iseg++) {
+        if (track(hybrid.discreteNet.ista(iseg)) == 1 || track(hybrid.discreteNet.iend(iseg)) == 1) {
+            flag1(iseg) = 1;
+        }
+    }
+
+    ivec remove = zeros<ivec>(hybrid.discreteNet.getNseg());
+    remove(find(flag1 == 0)).fill(1);
+
+    hybrid.discreteNet.subNetwork(remove);
+
+
+    // Get rid of noise
+    track = -ones<ivec>(hybrid.discreteNet.getNnod());
+
+    remove = zeros<ivec>(hybrid.discreteNet.getNseg());
+    for (int inodbc = 0; inodbc < hybrid.discreteNet.getNnodbc(); inodbc++) {
+        track.ones();
+        track *= -1;
+        hybrid.discreteNet.dfsBasic(hybrid.discreteNet.bcnod(inodbc), inodbc, track);
+        ivec nod = zeros<ivec>(hybrid.discreteNet.getNnod());
+        nod(find(track > -1)).fill(1);
+        if (accu(nod) <= 10) {
+            for (int iseg = 0; iseg < hybrid.discreteNet.getNseg(); iseg++) {
+                if (nod(hybrid.discreteNet.ista(iseg)) == 1 && nod(hybrid.discreteNet.iend(iseg)) == 1) {remove(iseg) = 1;}
+            }
+        }
+    }
+    hybrid.discreteNet.subNetwork(remove);
+
+    //hybrid.discreteNet.pictureNetwork("Network_Diameter.ps",hybrid.discreteNet.diam);
+    flag1 = zeros<vec>(hybrid.discreteNet.getNseg());
+    for (int inod = 0; inod < n; inod++)    {
+        for (int iseg = 0; iseg < hybrid.discreteNet.getNseg(); iseg++) {
+            if (array(inod,0) == hybrid.discreteNet.nodname(hybrid.discreteNet.ista(iseg)) || array(inod,0) == hybrid.discreteNet.nodname(hybrid.discreteNet.iend(iseg)))   {
+                flag1(iseg) = 1;
+            }
+        }
+    }
     mat extraD = zeros<mat>(hybrid.discreteNet.getNseg(), 1);
-    hybrid.discreteNet.printAmira("amiraNetwork.am", extraD);
+    extraD.col(0) = flag1;*/
 
-    hybrid.discreteNet.bloodFlow(true, false);
-    hybrid.discreteNet.printVisuals();
+/*    hybrid.discreteNet.bloodFlow(true, false);
+    hybrid.discreteNet.printNetwork("SolvedNetwork.txt");
+    hybrid.discreteNet.printVisuals(true, true);*/
 
     hybrid.discreteNet.findBoundingBox();
+
+    // Cortex vessel classification
+    ivec track = -ones<ivec>(hybrid.discreteNet.getNnod());
+    for (int i = 0; i < (int) array.n_rows; i++) {
+        for (int inodbc = 0; inodbc < hybrid.discreteNet.getNnodbc(); inodbc++) {
+            if (array(i,0) == hybrid.discreteNet.bcnodname(inodbc)) {
+                hybrid.discreteNet.branch = 0;
+                int tag = array(i,1);
+                hybrid.discreteNet.dfsBranch(hybrid.discreteNet.bcnod(inodbc), tag, track, 50);
+                inodbc = hybrid.discreteNet.getNnodbc();
+            }
+        }
+    }
+    hybrid.discreteNet.vesstyp.fill(2);
+    for (int iseg = 0; iseg < hybrid.discreteNet.getNseg(); iseg++)    {
+        if (track(hybrid.discreteNet.ista(iseg)) > 0)   {hybrid.discreteNet.vesstyp(iseg) = track(hybrid.discreteNet.ista(iseg));}
+        else if (track(hybrid.discreteNet.iend(iseg)) > 0)   {hybrid.discreteNet.vesstyp(iseg) = track(hybrid.discreteNet.iend(iseg));}
+    }
+
+/*    const char *headers[1] = {"Vesstyp"};
+    mat data3 = zeros<mat>(hybrid.discreteNet.getNseg(), 1);
+    data3.col(0) = conv_to<vec>::from(hybrid.discreteNet.vesstyp);
+    hybrid.discreteNet.printAmira("amiraVesstype.am", data3, true, headers);*/
 
     // Run vessel classification
     // Mes. 1
     imat inOutlets = zeros<imat>(2,2);
-    inOutlets(0,0) = 830;
+/*    inOutlets(0,0) = 830;
     inOutlets(0,1) = 1;
     inOutlets(1,0) = 825;
-    inOutlets(1,1) = 2;
+    inOutlets(1,1) = 2;*/
+
+    inOutlets = array;
+    for (int i = 0; i < n; i++) {
+        if (array(i,1) == 3)    {array(i,1) = 2;}
+    }
+
 
     // Mes. 3
     /*inOutlets = zeros<imat>(2,2);
@@ -88,12 +220,12 @@ int main(int argc, char** argv) {
 
     // Generate spatial graph
     hybrid.graph.generate(hybrid.discreteNet, true);
-    //hybrid.graph.findTree(inOutlets);
-    //hybrid.graph.mapClassification(hybrid.discreteNet);
-    hybrid.graph.analyseTopology(inOutlets, hybrid.discreteNet);
+    hybrid.graph.findTree(inOutlets);
+//    hybrid.graph.analyseTopology(inOutlets, hybrid.discreteNet);
     hybrid.discreteNet.analyseBoundaryType();
-    hybrid.discreteNet.pictureNetwork("Network_Geometry.ps",conv_to<vec>::from(hybrid.discreteNet.vesstyp));
 
+    // Compute boundary flow if flow solver has not run
+    hybrid.discreteNet.computeBoundaryFlow();
 
     // Generate micro-cell
     hybrid.cell.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
@@ -102,7 +234,7 @@ int main(int argc, char** argv) {
 
     hybrid.cell.setDiamDistrib(hybrid.graph.diam(find(hybrid.graph.vesstyp == 2)));
     hybrid.cell.setLengthDistrib(hybrid.graph.lseg(find(hybrid.graph.vesstyp == 2)));
-    hybrid.cell.rotationAngle = 0.;
+    hybrid.cell.rotationAngle = M_PI / 3.;
     hybrid.cell.computeConductivity("crossCell3D");
 
 

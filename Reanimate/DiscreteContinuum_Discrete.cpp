@@ -44,7 +44,14 @@ void DiscreteContinuum::computeDiscrete()  {
         }
         else if (sourceBCtyp(inodbc) == -2) {
             discreteNet.bctyp(inodbc) = 1;
-            discreteNet.bcprfl(inodbc) = discreteNet.BCflow(inodbc);
+            discreteNet.bcprfl(inodbc) = 0.;//-discreteNet.BCflow(inodbc);
+            /*for (int jnodbc = 0; jnodbc < discreteNet.getNnodbc(); jnodbc++)    {
+                if (discreteNet.bcnodname(jnodbc) == sourceTree(inodbc))    {
+                    discreteNet.bcprfl(inodbc) = discreteNet.BCflow(inodbc) / discreteNet.BCflow(jnodbc);
+                    jnodbc = discreteNet.getNnodbc();
+                }
+            }*/
+
         }
         else    {
             discreteNet.bctyp(inodbc) = 1;

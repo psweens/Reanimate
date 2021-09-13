@@ -1,5 +1,6 @@
 #include "Network.hpp"
 #include "spatGraph.hpp"
+#include "omp.h"
 
 using namespace reanimate;
 
@@ -344,7 +345,7 @@ void Network::printNamira(const string &filename, const string &networkname) {
     int k{0},segnodname1{},segnodname2{},cnt{},idiammax{};
     double diammax{};
 
-    imat segnodname = zeros<imat>(2,nseg);
+    segnodname = zeros<imat>(2,nseg);
     for (int i = 0; i < nedge; i++){
         for (int j = 1; j < nedgePoints(i); j++){
             k++;
@@ -373,6 +374,7 @@ void Network::printNamira(const string &filename, const string &networkname) {
     fprintf(ofp,"%i   number of nodes\n",nnod);
     fprintf(ofp,"Name    x       y       z\n");
     cnt = 0;
+
     for (int i = 0; i < nvertex; i++)    {	//nodes from nvertex
         fprintf(ofp,"%i %f %f %f\n",i+1,vertexCoordinates(i,0),vertexCoordinates(i,1),vertexCoordinates(i,2));
         cnt++;
@@ -393,7 +395,7 @@ void Network::printNamira(const string &filename, const string &networkname) {
     }
     if (cnt != nnod) {printf("*** Error: incorrect number of nodes\n");}
 
-    ista = zeros<ivec>(nseg);
+/*    ista = zeros<ivec>(nseg);
     iend = zeros<ivec>(nseg);
     indexSegmentConnectivity();
 
@@ -410,7 +412,7 @@ void Network::printNamira(const string &filename, const string &networkname) {
         if (nodtyp(inod) == 1)  {
             fprintf(ofp,"%i %i %f %f\n",inod,3,0.0,consthd);
         }
-    }
+    }*/
 
     fclose(ofp);
 
@@ -508,17 +510,7 @@ void Network::printAmira(const string &filename, const mat &extraData, bool smoo
         printText("Generating Amira file");
 
         spatGraph graph;
-        graph.generate(*this, false);
-
-        uvec idx;
-        ivec pntsPerEdge = zeros<ivec>(graph.getNseg());
-        for (int iseg = 0; iseg < graph.getNseg(); iseg++)  {
-            idx = find(graph.segname(iseg) == edgeLabels);
-            //if (graph.ista(iseg) == graph.iend(iseg))   {pntsPerEdge(iseg) = (int) idx.n_elem;}
-            pntsPerEdge(iseg) = (int) idx.n_elem + 1;
-        }
-        npoint = accu(pntsPerEdge);
-
+        graph.generate(*this, true);
 
         FILE *ofp1;
 
@@ -546,7 +538,6 @@ void Network::printAmira(const string &filename, const mat &extraData, bool smoo
         }
         fprintf(ofp1,"\n\n");
 
-
         // Vertex coordinates
         fprintf(ofp1,"@1\n");
         for(int inod = 0; inod < graph.getNnod(); inod++)  {
@@ -562,67 +553,41 @@ void Network::printAmira(const string &filename, const mat &extraData, bool smoo
         // Number of points per edge
         fprintf(ofp1,"\n@3\n");
         for (int iseg = 0; iseg < graph.getNseg(); iseg++)  {
-            fprintf(ofp1,"%i \n",pntsPerEdge(iseg));
+            fprintf(ofp1, "%i \n", graph.edgePnts(iseg));
         }
 
         // Coordinates of points - in order of start/end nodes for a segment (as read in network data file)
         fprintf(ofp1,"\n@4\n");
-        int nod1{}, nod2{-1}, pnt{};
-        uvec snod, enod;
-        ivec tag, pntIdx=zeros<ivec>(npoint);
+        int nod{}, pnt{};
+        uvec idx;
+        ivec pntIdx=zeros<ivec>(npoint);
         for (int iseg = 0; iseg < graph.getNseg(); iseg++)  {
-            nod2 = -1;
-            idx = find(graph.segname(iseg) == edgeLabels);
-            tag = zeros<ivec>((int) idx.n_elem);
-            snod = find(graph.segnodname(0,iseg) == nodname);
-            enod = find(graph.segnodname(1,iseg) == nodname);
-            if ((int) idx.n_elem > 1) {
-                fprintf(ofp1, "%.15e %.15e %.15e\n", cnode(0, snod(0)), cnode(1, snod(0)), cnode(2, snod(0)));
-                nod1 = (int) snod(0);
-                pntIdx(pnt) = snod(0);
-                pnt += 1;
-                while (nod2 != (int) enod(0)) {
-                    for (int iseg = 0; iseg < (int) idx.n_elem; iseg++) {
-                        if (ista(idx(iseg)) == nod1 && tag(iseg) == 0) {
-                            nod2 = iend(idx(iseg));
-                            fprintf(ofp1, "%.15e %.15e %.15e\n", cnode(0, nod2), cnode(1, nod2), cnode(2, nod2));
-                            nod1 = nod2;
-                            tag(iseg) = 1;
-                            pntIdx(pnt) = nod2;
-                            pnt += 1;
-                            iseg = nseg;
-                        }
-                        else if (iend(idx(iseg)) == nod1 && tag(iseg) == 0) {
-                            nod2 = ista(idx(iseg));
-                            fprintf(ofp1, "%.15e %.15e %.15e\n", cnode(0, nod2), cnode(1, nod2), cnode(2, nod2));
-                            nod1 = nod2;
-                            tag(iseg) = 1;
-                            pntIdx(pnt) = nod2;
-                            pnt += 1;
-                            iseg = nseg;
-                        }
-                    }
-                }
-            }
-            else {
-                fprintf(ofp1, "%.15e %.15e %.15e\n", cnode(0, snod(0)), cnode(1, snod(0)), cnode(2, snod(0)));
-                pntIdx(pnt) = snod(0);
-                pnt += 1;
-                fprintf(ofp1, "%.15e %.15e %.15e\n", cnode(0, enod(0)), cnode(1, enod(0)), cnode(2, enod(0)));
-                pntIdx(pnt) = enod(0);
+            for (int i = 0; i < (int) graph.edgePnts(iseg); i++) {
+                nod = graph.segpoints(i,iseg);
+                fprintf(ofp1, "%.15e %.15e %.15e\n", cnode(0, nod), cnode(1, nod), cnode(2, nod));
+                pntIdx(pnt) = nod;
                 pnt += 1;
             }
         }
 
-
         // Segment radii
         fprintf(ofp1,"\n@5\n");
-        for(int i = 0; i < npoint; i++)    {fprintf(ofp1,"%.15e\n",pointAverage(i, pntIdx, rseg));}
+        vec tmpvec = zeros<vec>(npoint);
+        #pragma omp parallel for schedule(dynamic) default(none) shared(ofp1, npoint, pntIdx, tmpvec, rseg, nodtyp, nodseg)
+        for(int i = 0; i < npoint; i++)    {tmpvec(i) = pointAverage(i, pntIdx, rseg);}
+        for(int i = 0; i < npoint; i++)    {fprintf(ofp1,"%.15e\n",tmpvec(i));}
 
         // Extra data
+        vec store;
+        mat tmp = zeros<mat>(npoint, extraData.n_cols);
+        #pragma omp parallel for schedule(dynamic) default(none) shared(ofp1, npoint, pntIdx, tmp, extraData, nodtyp, nodseg) private(store)
+        for (int j = 0; j < (int) extraData.n_cols; j++)  {
+            store = extraData.col(j);
+            for(int i = 0; i < npoint; i++)    {tmp(i,j) = pointAverage(i, pntIdx, extraData.col(j));}
+        }
         for (int j = 0; j < (int) extraData.n_cols; j++)  {
             fprintf(ofp1,"\n@%i\n",6+j);
-            for(int i = 0; i < npoint; i++)    {fprintf(ofp1,"%.15e\n",pointAverage(i, pntIdx, extraData.col(j)));}
+            for(int i = 0; i < npoint; i++)    {fprintf(ofp1,"%.15e\n",tmp(i,j));}
         }
 
         fclose(ofp1);
@@ -645,11 +610,11 @@ void Network::printAmira(const string &filename, const mat &extraData, bool smoo
         fprintf(ofp1,"\n POINT { float [3] EdgePointCoordinates } @4");
         fprintf(ofp1,"\n POINT { float Radii } @5");
         for (int j = 0; j < (int) extraData.n_cols; j++)  {
-            fprintf(ofp1,"\n POINT { float Extra-%i } @%i\n\n",j,6+j);
+            fprintf(ofp1,"\n POINT { float Extra-%i } @%i",j,6+j);
         }
 
         // Vertex coordinates
-        fprintf(ofp1,"@1\n");
+        fprintf(ofp1,"\n\n@1\n");
         for(int inod = 0; inod < nnod; inod++)  {
             fprintf(ofp1,"%.15e %.15e %.15e\n",cnode(0,inod),cnode(1,inod),cnode(2,inod));
         }
@@ -684,8 +649,8 @@ void Network::printAmira(const string &filename, const mat &extraData, bool smoo
         for (int j = 0; j < (int) extraData.n_cols; j++)  {
             fprintf(ofp1,"\n@%i\n",6+j);
             for(int iseg = 0; iseg < nseg; iseg++)    {
-                fprintf(ofp1,"%.15e\n",extraData(iseg,0));
-                fprintf(ofp1,"%.15e\n",extraData(iseg,0));
+                fprintf(ofp1,"%.15e\n",extraData(iseg,j));
+                fprintf(ofp1,"%.15e\n",extraData(iseg,j));
             }
         }
 
@@ -700,11 +665,7 @@ void Network::printAmira(const string &filename, const mat &extraData, bool smoo
 double Network::pointAverage(const int &pnt, const ivec &pntIdx, const vec &param)    {
 
     double var{};
-    for (int iseg= 0; iseg < nseg; iseg++)  {
-        if (ista(iseg) == pntIdx(pnt) || iend(iseg) == pntIdx(pnt)) {
-            var += param(iseg);
-        }
-    }
+    for (int inod = 0; inod < nodtyp(pntIdx(pnt)); inod++) {var += param(nodseg(inod,pntIdx(pnt)));}
 
     return var /= nodtyp(pntIdx(pnt));
 }

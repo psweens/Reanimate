@@ -20,12 +20,16 @@ void Network::fullSolver()    {
     // Define qo - pressure and flow boundary conditions
     if (!phaseseparation)   {printText("Assigning boundary conditions",2, 0);}
     int idx{};
+    rowvec aRow = zeros<rowvec>(K.n_cols);
     for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
         idx = bcnod(inodbc);
         if (bctyp(inodbc) == 0)  {
             Qo(idx) = bcprfl(inodbc)*alpha;
-            K.row(idx).zeros();
-            K(idx,idx) = 1.;
+//            K.row(idx).zeros();
+//            K(idx,idx) = 1.;
+            aRow(idx) = 1.;
+            K.row(idx) = aRow;
+            aRow(idx) = 0.;
         }
         else    {Qo(idx) = -bcprfl(inodbc)*gamma;}
     }
@@ -65,10 +69,11 @@ void Network::estimationSolver() {
         nod1 = bcnod(bcpress_idx(inodbc)); // Node idx w/ pressure BC
         idx = find(nod1 == unknownnod_idx);
         nod2 = idx(0);  // Node idx of known nodes
-        aRow = A.row(nod2);
-        aRow(find(aRow > 0.)).fill(0.);
+        //aRow = A.row(nod2);
+        //aRow(find(aRow > 0.)).fill(0.);
         aRow(nod1) = 1.;
         A.row(nod2) = aRow;
+        aRow(nod1) = 0.;
     }
 
     // Constructing H matrix - replacing with matrix A for reduced run-time

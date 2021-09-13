@@ -24,12 +24,12 @@ namespace reanimate {
 
         string networkName,networkPath,buildPath,loadPath,rLog;
         bool unknownBCs,phaseseparation,silence;
-        int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track,nitmax{100};
+        int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track,nitmax{100},nvertex{},nedge{},npoint{},branch{};
         double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.},tissDensity{},bloodDensity{},consthd{},constvisc{};
-        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,flagTree,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt;
+        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,flagTree,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt,edgePnts;
         vec diam,rseg,lseg,q,qq,vel,hd,bcprfl,bchd,nodpress,conductance,BCflow,BCpress,tau,segpress,elseg,ediam;
         uvec unknownnod_idx,bcpress_idx;
-        imat segnodname,nodnod,nodseg;
+        imat segnodname,nodnod,nodseg,segpoints;
         mat cnode,bcp;
 
         virtual double evalTissPress(vec &x) {return 0.;}
@@ -55,6 +55,7 @@ namespace reanimate {
         void processAmira(const bool &stubs);
         void dfsBasic(int v, int tag, ivec &track, bool nodeCondition=false, int type=2);
         void doubleDfs(int v, int tag, double val, ivec &track, vec &param, string cond="GT");
+        void dfsBranch(int v, int tag, ivec &track, int maxBranch=10);
         void dfsArtic(int v, int p=-1);
         void findArticulationPoints();
         ivec findDeadends();
@@ -77,6 +78,9 @@ namespace reanimate {
 
         // Math functions
         double eucDistance(vec &x, vec &y);
+        double MSE(vec x, vec y);
+        vec MaxSE(vec x, vec y);
+        double MedianSE(vec x, vec y);
         double SPHI(int n, double &x);
         double SPHK(int n, double &x);
         vec lognormal(double &mean, double &SD, int &nseg);
@@ -113,7 +117,6 @@ namespace reanimate {
         int nseg{},nnod{},nnodbc{},computeLseg{};
 
         // Amira variables
-        int nvertex{},nedge{},npoint{};
         ivec nedgePoints;
         vec thickness;
         imat edgeConnectivity;
@@ -134,6 +137,7 @@ namespace reanimate {
 
     private:
 
+        void findBoundaryNodes();
         const char* FindAndJump(const char* buffer, const char* SearchString);
 
     };

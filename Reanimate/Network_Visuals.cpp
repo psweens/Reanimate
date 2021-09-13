@@ -58,16 +58,12 @@ void Network::pictureNetwork(const string &filename, vec vector, bool logdist, i
     }
     // Label boundary nodes in black
     fprintf(ofp,"0 0 0 setrgbcolor\n");//black
-    for (int inod = 0; inod < nnod; inod++){
-        if (nodtyp(inod) == 1) {
-            for (int iseg = 0; iseg < nseg; iseg++)    {
-                if (inod==ista(iseg) || inod==iend(iseg))    {
-                    xs = cnode(0,inod) - xmin;
-                    ys = cnode(1,inod) - ymin;
-                    fprintf(ofp, "%g mx %g my m ", xs + 0.5/picfac,ys);
-                    fprintf(ofp, "(%i) show\n",(int) nodname(inod));
-                }
-            }
+    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+        if (cnode(2,bcnod(inodbc)) > 0.95*alz)    {
+            xs = cnode(0,bcnod(inodbc)) - xmin;
+            ys = cnode(1,bcnod(inodbc)) - ymin;
+            fprintf(ofp, "%g mx %g my m ", xs + 0.5/picfac,ys);
+            fprintf(ofp, "(%i) show\n",(int) nodname(bcnod(inodbc)));
         }
     }
     fprintf(ofp, "showpage\n");
@@ -75,11 +71,14 @@ void Network::pictureNetwork(const string &filename, vec vector, bool logdist, i
 
     fprintf(ofp, "%%%%Page: %i \n",2);
     //plot vessels using Matlab 'jet' scheme
+    double plot{},blue{},green{},red{},vmin{},vmax{},nod1{},nod2{};
+    vmin = vector.min();
+    vmax = vector.max();
     for(int i = 0; i < (int) vector.n_elem; i++)  {
-        double plot = (vector(i) - vector.min())/(vector.max()-vector.min());
-        double blue = min(max(1.5-4*abs(plot-0.25),0.),1.);
-        double green = min(max(1.5-4*abs(plot-0.5),0.),1.);
-        double red = min(max(1.5-4*abs(plot-0.75),0.),1.);
+        plot = (vector(i) - vmin)/(vmax-vmin);
+        blue = min(max(1.5-4*abs(plot-0.25),0.),1.);
+        green = min(max(1.5-4*abs(plot-0.5),0.),1.);
+        red = min(max(1.5-4*abs(plot-0.75),0.),1.);
         if(plot < 0. || plot > 1.){
             red = 1.0;
             green = 1.0;
@@ -87,13 +86,15 @@ void Network::pictureNetwork(const string &filename, vec vector, bool logdist, i
         }
         fprintf(ofp,"%6.3f %6.3f %6.3f c\n",red,green,blue);
 
+        nod1 = ista(i);
+        nod2 = iend(i);
         //fprintf(ofp,"1 setlinewidth\n"); // vessels have uniform diameter
         fprintf(ofp,"%g setlinewidth\n",picfac*diam(i)); // vessels are drawn as proportional to their actual diameters
-        xs = cnode(0,ista(i)) - xmin;
-        ys = cnode(1,ista(i)) - ymin;
+        xs = cnode(0,nod1) - xmin;
+        ys = cnode(1,nod1) - ymin;
         fprintf(ofp, "%g mx %g my m ", xs,ys);
-        xs = cnode(0,iend(i)) - xmin;
-        ys = cnode(1,iend(i)) - ymin;
+        xs = cnode(0,nod2) - xmin;
+        ys = cnode(1,nod2) - ymin;
         fprintf(ofp, "%g mx %g my l ", xs,ys);
         fprintf(ofp, "stroke\n");
     }

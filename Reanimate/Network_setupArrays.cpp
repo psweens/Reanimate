@@ -104,13 +104,13 @@ void Network::setup_estimationArrays()  {
     if (accu(bchd) == 0.)   {hd.fill(consthd);}
 
     // Assign target pressure
-    //targPress = 31.;
-    targPress = mean(bcprfl(find(bctyp == 0))); // Set target pressure as the mean of the assign boundary pressure conditions
+    targPress = 31.;
+    //targPress = mean(bcprfl(find(bctyp == 0))); // Set target pressure as the mean of the assign boundary pressure conditions
     printNum("Target Pressure = ",targPress,"mmHg");
     p0.fill(targPress * alpha);
 
     // Target shear stress - intially set with random directions unless network flow is known
-    targStress = 15.;
+    targStress = 5.;
     printNum("Target Wall Shear Stress = ",targStress,"dyn/cm2");
     targStress *= beta;
     int ran{};

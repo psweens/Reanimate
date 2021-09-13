@@ -48,6 +48,7 @@ add_executable(Reanimate_Update
         Reanimate/DiscreteContinuum.cpp
         Reanimate/DiscreteContinuum.hpp
         Reanimate/DiscreteContinuum_Setup.cpp
+        Reanimate/DiscreteContinuum_Analysis.cpp
         Reanimate/DiscreteContinuum_Continuum.cpp
         Reanimate/DiscreteContinuum_Discrete.cpp
         Reanimate/MicroCell.cpp
@@ -58,4 +59,4 @@ add_executable(Reanimate_Update
         Reanimate/Tissue.hpp
         Reanimate/Tissue_Solvers.cpp
         Reanimate/Solute.cpp
-        Reanimate/Solute.hpp Reanimate/DiscreteContinuum_Analysis.cpp)
+        Reanimate/Solute.hpp)

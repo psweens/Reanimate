@@ -7,13 +7,15 @@
 using namespace reanimate;
 
 // Euclidean distance between two points
-double Network::eucDistance(vec &x, vec &y) {
-
-    double val{};
-    for (int i = 0; i < (int) x.n_elem; i++)    {val += pow(x(i)-y(i),2);}
-
-    return sqrt(val);
-
+double Network::eucDistance(vec &x, vec &y) {return sqrt(sum(pow(x - y, 2)));}
+double Network::MSE(vec x, vec y)   {return mean(pow(x - y, 2));}
+double Network::MedianSE(vec x, vec y)   {return median(pow(x - y, 2));}
+vec Network::MaxSE(vec x, vec y)   {
+    vec z = pow(x - y, 2);
+    vec output = zeros<vec>(2);
+    output(0) = max(z);
+    output(1) = z.index_max();
+    return output;
 }
 
 // Lognormal random generator
