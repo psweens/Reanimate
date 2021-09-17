@@ -4,6 +4,7 @@
 #include "DiscreteContinuum.hpp"
 #include "MicroCell.hpp"
 #include "omp.h"
+#include "math.h"
 
 using namespace reanimate;
 using namespace std;
@@ -28,6 +29,43 @@ int main(int argc, char** argv) {
     }
     fclose(data);
 
+    // Find shortest path
+/*    Vasculature test;
+    test.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
+    test.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
+    test.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
+    test.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
+    test.setBuildPath(true);
+    test.loadNetwork("1Network.dat");
+    test.setStackSize();
+    test.loadDeadEnds = true;
+
+    test.rheolParams();
+    test.hd.fill(0.45);
+    test.computeConductance();
+    int nod{},nod2{};
+    for (int inodbc = 0; inodbc < test.getNnodbc(); inodbc++)   {
+        if (test.bcnodname(inodbc) == 830)    {
+            nod = test.bcnod(inodbc);
+            //inodbc = test.getNnodbc();
+        }
+        if (test.bcnodname(inodbc) == 825)    {
+            nod2 = test.bcnod(inodbc);
+            //inodbc = test.getNnodbc();
+        }
+    }
+    vec tmp = test.conductance * 1e-5;
+    ivec path = test.findShortestPath(nod, nod2, tmp);
+    vec printPath = zeros<vec>(test.getNseg());
+    for (int iseg = 0; iseg < test.getNseg(); iseg++) {
+        uvec idx = find(path == test.ista(iseg));
+        uvec jdx = find(path == test.iend(iseg));
+        if (idx.n_rows > 0 && jdx.n_elem > 0)   {printPath(iseg) = 1.;}
+    }
+    cout<<"here"<<endl;
+    cout<<path.n_elem<<endl;
+    test.pictureNetwork("ShortestPath.ps", printPath);*/
+
     // Generate discrete flow solution
     DiscreteContinuum hybrid;
     hybrid.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
@@ -35,12 +73,50 @@ int main(int argc, char** argv) {
     hybrid.discreteNet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
     hybrid.discreteNet.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
     hybrid.discreteNet.setBuildPath(true);
-    hybrid.discreteNet.loadNetwork("MedullaSolved.txt");
+    hybrid.discreteNet.loadNetwork("SW1/SW1_1.txt");
     hybrid.discreteNet.setStackSize();
     hybrid.discreteNet.loadDeadEnds = true;
 
+    // Extract subnetwork
+    hybrid.graph.generate(hybrid.discreteNet, true);
+    int nod{};
+    int depth{4};
+    for (int inodbc = 0; inodbc < hybrid.graph.getNnodbc(); inodbc++)   {
+        if (hybrid.graph.bcnodname(inodbc) == 215)    {
+            nod = hybrid.graph.bcnod(inodbc);
+            inodbc = hybrid.graph.getNnodbc();
+        }
+    }
+    ivec order = hybrid.graph.breadthFirstSearch(nod);
+    vec border = zeros<vec>(hybrid.graph.getNseg());
+    for (int iseg = 0; iseg < hybrid.graph.getNseg(); iseg++) {
+        border(iseg) = ceil(0.5*(order(hybrid.graph.ista(iseg)) + order(hybrid.graph.iend(iseg))));
+    }
+    ivec remove = zeros<ivec>(hybrid.discreteNet.getNseg());
+    vec neworder = zeros<vec>(hybrid.discreteNet.getNseg());
+    for (int iseg = 0; iseg < hybrid.discreteNet.getNseg(); iseg++)   {
+        for (int jseg = 0; jseg < hybrid.graph.getNseg(); jseg++)   {
+            if (hybrid.discreteNet.edgeLabels(iseg) == hybrid.graph.segname(jseg))  {
+                if (border(jseg) > depth) {remove(iseg) = 1;}
+                neworder(iseg) = border(jseg);
+                jseg = hybrid.graph.getNseg();
+            }
+        }
+    }
+
+    remove(find(neworder > depth)).fill(1);
+    neworder = neworder(find(neworder <= depth));
+    hybrid.discreteNet.subNetwork(remove, false);
+    hybrid.discreteNet.pictureNetwork("NetworkOrder.ps", neworder);
+
+    remove = zeros<ivec>(hybrid.graph.getNseg());
+    remove(find(order > 4)).fill(1);
+    order(find(order > 4)).fill(1);
+    hybrid.graph.subNetwork(remove, true);
+    hybrid.graph.pictureNetwork("GraphOrder.ps", conv_to<vec>::from(order));
+
 /*    ivec flag = zeros<ivec>(hybrid.discreteNet.getNseg());
-    flag(find(abs(hybrid.discreteNet.q) < 2.)).fill(1);
+    flag(find(abs(hybrid.discreteNet.q) < 2.)).fill(1);gsuit
     hybrid.discreteNet.subNetwork(flag);*/
 
 /*    const char *headers[1] = {"Vesstyp"};

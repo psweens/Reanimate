@@ -6,9 +6,7 @@ void Network::pictureNetwork(const string &filename, vec vector, bool logdist, i
 
     double xs,ys;
 
-    if (logdist)    {
-        vector = log(vector);
-    }
+    if (logdist)    {vector = log(vector);}
 
     FILE *ofp;
 

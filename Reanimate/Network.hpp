@@ -57,6 +57,9 @@ namespace reanimate {
         void doubleDfs(int v, int tag, double val, ivec &track, vec &param, string cond="GT");
         void dfsBranch(int v, int tag, ivec &track, int maxBranch=10);
         void dfsArtic(int v, int p=-1);
+        ivec breadthFirstSearch(int nod);
+        ivec findShortestPath(int startnode, int endNode, vec &edgeWeight);
+
         void findArticulationPoints();
         ivec findDeadends();
         void removeNewBC(ivec storeBCnodname, bool print=false, bool graph=false);
