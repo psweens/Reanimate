@@ -2,7 +2,7 @@
 
 using namespace reanimate;
 
-void spatGraph::classifyNetwork(imat &InOutlets, ivec &geometry)  {
+void spatGraph::classifyNetwork(imat &baseVessels, ivec &geometry)  {
 
     printText("Classifying vasculature based on network topology");
     printNum("Dmin =", Dmin);
@@ -23,24 +23,24 @@ void spatGraph::classifyNetwork(imat &InOutlets, ivec &geometry)  {
     flagTree.fill(-1);
 
     // Ordering in terms of feeding/draining vessel diameters (descending)
-    for(int m = 0; m < (int) InOutlets.n_rows; m++)    {
-        for(int j = 0; j < (int) InOutlets.n_rows; j++)    {
-            if(InOutlets(m,2) > InOutlets(j,2))   {
-                int tmp1 = (int) InOutlets(m,0);
-                InOutlets(m,0) = InOutlets(j,0);
-                InOutlets(j,0) = tmp1;
-                int tmp2 = (int) InOutlets(m,1);
-                InOutlets(m,1) = InOutlets(j,1);
-                InOutlets(j,1) = tmp2;
-                double tmp3 = InOutlets(m,2);
-                InOutlets(m,2) = InOutlets(j,2);
-                InOutlets(j,2) = tmp3;
-                double tmp4 = InOutlets(m,3);
-                InOutlets(m,3) = InOutlets(j,3);
-                InOutlets(j,3) = tmp4;
-                double tmp5 = InOutlets(m,4);
-                InOutlets(m,4) = InOutlets(j,4);
-                InOutlets(j,4) = tmp5;
+    for(int m = 0; m < (int) baseVessels.n_rows; m++)    {
+        for(int j = 0; j < (int) baseVessels.n_rows; j++)    {
+            if(baseVessels(m, 2) > baseVessels(j, 2))   {
+                int tmp1 = (int) baseVessels(m, 0);
+                baseVessels(m, 0) = baseVessels(j, 0);
+                baseVessels(j, 0) = tmp1;
+                int tmp2 = (int) baseVessels(m, 1);
+                baseVessels(m, 1) = baseVessels(j, 1);
+                baseVessels(j, 1) = tmp2;
+                double tmp3 = baseVessels(m, 2);
+                baseVessels(m, 2) = baseVessels(j, 2);
+                baseVessels(j, 2) = tmp3;
+                double tmp4 = baseVessels(m, 3);
+                baseVessels(m, 3) = baseVessels(j, 3);
+                baseVessels(j, 3) = tmp4;
+                double tmp5 = baseVessels(m, 4);
+                baseVessels(m, 4) = baseVessels(j, 4);
+                baseVessels(j, 4) = tmp5;
             }
         }
     }
@@ -49,9 +49,9 @@ void spatGraph::classifyNetwork(imat &InOutlets, ivec &geometry)  {
     // Beginning with the largest-diameter starting segment, Algorithm 1 is implemented where every parent segment has a diameter >= Dmin.
     // Daughter segments with D < Dmin are added to Rs but their end nodes aren't labelled.
     // These steps are repeated for all the remaining starting segments.
-    for (int iTree = 0; iTree < (int) InOutlets.n_rows; iTree++)  {
+    for (int iTree = 0; iTree < (int) baseVessels.n_rows; iTree++)  {
 
-        int init_seg = (int) InOutlets(iTree,0);
+        int init_seg = (int) baseVessels(iTree, 0);
         Rs(init_seg) = 1;   // Flag as a reached segment
         Rn(ista(init_seg)) = 1; // Flag parent start node
         Rn(iend(init_seg)) = 1; // Flag parent end node
@@ -193,7 +193,7 @@ void spatGraph::classifyNetwork(imat &InOutlets, ivec &geometry)  {
         here:;
 
         // Altering vector based on classification
-        if (InOutlets(iTree,1) == 2)  {
+        if (baseVessels(iTree, 1) == 2)  {
             for (int iseg = 0; iseg < nseg; iseg++)    {
                 if (geometry(iseg) == 1 && flagTree(iseg) == iTree)    {
                     geometry(iseg) = 3;
@@ -205,8 +205,8 @@ void spatGraph::classifyNetwork(imat &InOutlets, ivec &geometry)  {
     }
 
     loop:;
-    for (int jTree = 0; jTree < (int) InOutlets.n_rows; jTree++)   {
-        internalClassificationLoop(0, (int) InOutlets(jTree,1), geometry, 1, jTree, flagTree);
+    for (int jTree = 0; jTree < (int) baseVessels.n_rows; jTree++)   {
+        internalClassificationLoop(0, (int) baseVessels(jTree, 1), geometry, 1, jTree, flagTree);
     }
 
     // Check to see if there any remaining candidate parents segments
@@ -271,10 +271,10 @@ void spatGraph::internalClassificationLoop(const int &init_seg, const int &class
 
         // Search for max. diameter segment which hasn't been a parent
         int parent = 0;
-        float temp = 0.0;
+        double tmp = 0.0;
         for (int iseg = 0; iseg < nseg; iseg++)    {
-            if ((Rs(iseg) == 1) && (Pa(iseg) == 0) && (diam(iseg) > temp) && (fTree(iseg) == tree))  {
-                temp = diam(iseg);
+            if ((Rs(iseg) == 1) && (Pa(iseg) == 0) && (diam(iseg) > tmp) && (fTree(iseg) == tree))  {
+                tmp = diam(iseg);
                 parent = iseg;
             }
         }
@@ -327,8 +327,8 @@ void spatGraph::internalClassificationLoop(const int &init_seg, const int &class
         }
         else if (dCounter != 0) {
 
-            uvec temp = find(daughter == 1);
-            vec d_order = conv_to< vec >::from(temp);
+            uvec tmp2 = find(daughter == 1);
+            vec d_order = conv_to< vec >::from(tmp2);
             vec d_diam = diam(find(daughter == 1));
             mat d_matrix = join_rows(d_order,d_diam);
             for(int m = 0; m < dCounter; m++)    {
@@ -378,7 +378,7 @@ void spatGraph::internalClassificationLoop(const int &init_seg, const int &class
                                                 }
                                             }
                                             if (cntr == 0)  {
-                                                geometry(iseg) = 2;
+                                                vesselGeometry(iseg) = 2;
                                             }
                                         }
                                         inod2 = (int) iend(iseg);
@@ -395,7 +395,7 @@ void spatGraph::internalClassificationLoop(const int &init_seg, const int &class
                                                 }
                                             }
                                             if (cntr == 0)  {
-                                                geometry(iseg) = 2;
+                                                vesselGeometry(iseg) = 2;
                                             }
                                         }
                                         inod2 = (int) ista(iseg);
@@ -455,7 +455,7 @@ void spatGraph::mapClassification(Network &net, bool fullgraph) {
         uvec idx;
         for (int iseg = 0; iseg < nseg; iseg++) {
             idx = find(segname(iseg) == net.edgeLabels);
-            net.vesstyp(idx).fill(geometry(iseg));
+            net.vesstyp(idx).fill(vesselGeometry(iseg));
             net.flagTree(idx).fill(flagTree(iseg));
         }
     }
@@ -481,7 +481,7 @@ void spatGraph::mapClassification(Network &net, bool fullgraph) {
         }
     }
 
-    // Boundary geometry
+    // Boundary vesselGeometry
     net.analyseBoundaryType();
 
 }

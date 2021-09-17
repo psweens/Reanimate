@@ -24,7 +24,7 @@ namespace reanimate {
 
         string networkName,networkPath,buildPath,loadPath,rLog;
         bool unknownBCs,phaseseparation,silence;
-        int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track,nitmax{100},nvertex{},nedge{},npoint{},branch{};
+        int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track{},nitmax{100},nvertex{},nedge{},npoint{},branch{};
         double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.},tissDensity{},bloodDensity{},consthd{},constvisc{};
         ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,flagTree,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt,edgePnts;
         vec diam,rseg,lseg,q,qq,vel,hd,bcprfl,bchd,nodpress,conductance,BCflow,BCpress,tau,segpress,elseg,ediam;
@@ -133,7 +133,7 @@ namespace reanimate {
         sp_mat M,L,K,A,H1,H2,W;
 
         // Topology fn parameters
-        double timer;
+        double timer{};
         ivec visited, tin, low;
 
         double pointAverage(const int &pnt, const ivec &pntIdx, const vec &param);

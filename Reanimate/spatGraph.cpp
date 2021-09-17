@@ -19,7 +19,7 @@ void spatGraph::setup_graphArrays() {
     //vesstyp = zeros<ivec>(nseg);
     ista = zeros<ivec>(nseg);
     iend = zeros<ivec>(nseg);
-    geometry = zeros<ivec>(nseg);
+    vesselGeometry = zeros<ivec>(nseg);
     isBridge = zeros<ivec>(nseg);
     isBridgehead = zeros<ivec>(nseg);
 
@@ -335,10 +335,10 @@ void spatGraph::defineTrunk()   {
         }
     }
 
-    classifyNetwork(InOutlets, geometry);
-    uvec art = find(geometry == 1);
-    uvec cap = find(geometry == 2);
-    uvec ven = find(geometry == 3);
+    classifyNetwork(InOutlets, vesselGeometry);
+    uvec art = find(vesselGeometry == 1);
+    uvec cap = find(vesselGeometry == 2);
+    uvec ven = find(vesselGeometry == 3);
     printNum("Arterioles (%) =", 100*double(art.n_elem) / double(nseg));
     printNum("Capillaries (%) =", 100*double(cap.n_elem) / double(nseg));
     printNum("Venules (%) =", 100*double(ven.n_elem) / double(nseg));
@@ -352,15 +352,15 @@ void spatGraph::analyseTopology(imat predefinedInput, Network &network)   {
 
     popInletsOutlets(predefinedInput);
 
-    classifyNetwork(InOutlets, geometry);
+    classifyNetwork(InOutlets, vesselGeometry);
 
-    uvec art = find(geometry == 1);
-    uvec cap = find(geometry == 2);
-    uvec ven = find(geometry == 3);
+    uvec art = find(vesselGeometry == 1);
+    uvec cap = find(vesselGeometry == 2);
+    uvec ven = find(vesselGeometry == 3);
     printNum("Arterioles (%) =", 100*double(art.n_elem) / double(nseg));
     printNum("Capillaries (%) =", 100*double(cap.n_elem) / double(nseg));
     printNum("Venules (%) =", 100*double(ven.n_elem) / double(nseg));
-    vesstyp = geometry;
+    vesstyp = vesselGeometry;
 
     for (int iseg = 0; iseg < network.getNseg(); iseg++)    {
         for (int jseg = 0; jseg < nseg; jseg++) {
@@ -427,7 +427,7 @@ void spatGraph::findTree(imat input)  {
         nodvtyp = oldnodtyp;
     }
 
-    geometry = vesstyp;
+    vesselGeometry = vesstyp;
 
 }
 

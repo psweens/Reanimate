@@ -6,7 +6,7 @@
 
 using namespace reanimate;
 
-void MicroCell::computeConductivity(const string cellType, const int iterations, const string filename)  {
+void MicroCell::computeConductivity(const string cellType, const int iterations)  {
 
     printText("Micro-Cell Module", 3);
 

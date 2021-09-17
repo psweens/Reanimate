@@ -34,7 +34,7 @@ void DiscreteContinuum::runHybrid()    {
     printText("Discrete-Continuum Module", 3);
     discreteNet.silence = true;
 
-    // Map geometry classification to full network
+    // Map vesselGeometry classification to full network
     graph.mapClassification(discreteNet);
     discreteNet.pictureNetwork("Hybrid_Classification.ps",conv_to<vec>::from(discreteNet.vesstyp));
     discreteNet.pictureNetwork("Hybrid_InitialBloodPressure.ps", discreteNet.segpress);

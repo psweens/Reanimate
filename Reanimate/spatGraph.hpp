@@ -15,7 +15,7 @@ namespace reanimate {
 
         int nTrees{},narterioles{},nvenules{};
         double Dr{},Dmin{};
-        ivec geometry,isBridge,isBridgehead,flagTree;
+        ivec vesselGeometry,isBridge,isBridgehead,flagTree;
         imat InOutlets,segvert;
         void generate(Network &network, bool print=false);
         void indexVertices(Network &network);
@@ -30,7 +30,7 @@ namespace reanimate {
         void removeNewBoundaries(ivec storeBCnodname, bool print=false);
         void removeNoflowBoundaries(ivec &bnodes, bool print=false);
         void linkEdges();
-        void classifyNetwork(imat &InOutlets, ivec &geometry);
+        void classifyNetwork(imat &baseVessels, ivec &geometry);
         void mapClassification(Network &net, bool fullgraph=true);
 
         ivec findParallelEdges();

@@ -27,15 +27,15 @@ namespace reanimate   {
 
         bool terminateNM{false};
         int nart{},ncap{},nven{},nnodD{},nnodB{},nnodT{},nIterLambda{};
-        double qact{},qsum{},capFlow{},artIn{},venOut{},capPress{},capLseg{},artDiam{},capDiam{},venDiam{},optKappa{},optLambda{},optBeta{},lambda{};
+        double qact{},qsum{},capFlow{},artIn{},venOut{},capPress{},capLseg{},artDiam{},capDiam{},venDiam{},optKappa{},optLambda{},optBeta{};
         ivec sourceTyp,sourceBCtyp,sourceTree;
         uvec sourceIdx;
         vec qout_act,pout_act,Pa_Pv,qout,pout,continuumPress,r0,segpressPred,nodpressPred,qPred,Mpress_pred,sigmaFlow_pred,sigmaPress_pred,R2_flow,R2_press;
-        mat rnod,Mnet,Mtiss,snode,lambdaRange,NINV;
+        mat rnod,Mnet,Mtiss,snode,NINV;
 
         double evalTiss(const double &r, const double &r0, const double &lambda);
-        double evalTissPress(vec &x);
-        double evalTissVel(vec &x);
+        double evalTissPress(vec &x) override;
+        double evalTissVel(vec &x) override;
 
         void setup_hybridArrays();
         void setup_continuumArrays();

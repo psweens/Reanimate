@@ -44,7 +44,7 @@ void MicroCell::setup_mcFlowArrays() {
     cF = zeros<mat>(nseg,nnod);
     conductivity = zeros<mat>(3,3);
 
-};
+}
 
 void MicroCell::analyseMicroCell()  {
 

@@ -28,7 +28,7 @@ namespace reanimate {
         void crossCell3D();
 
         void flowMicroCell();
-        void computeConductivity(const string cellType, const int iterations=1e3, const string filename="None");
+        void computeConductivity(const string cellType, const int iterations=1e3);
 
         // Setter functions
         void setDiamDistrib(const vec d);

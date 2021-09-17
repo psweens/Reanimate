@@ -50,7 +50,6 @@ void DiscreteContinuum::analyseBranches()  {
 
     // Define boundary nodes types
     sourceBCtyp = zeros<ivec>(discreteNet.getNnodbc());
-    int cntr{};
     for (int inodbc = 0; inodbc < discreteNet.getNnodbc(); inodbc++) {
         sourceBCtyp(inodbc) = sourceTyp(discreteNet.bcnod(inodbc));
         for (int i = 0; i < (int) graph.InOutlets.n_rows; i++)    {
@@ -59,7 +58,7 @@ void DiscreteContinuum::analyseBranches()  {
     }
 
 
-    // Define geometry of dummy nodes & tree allegiance
+    // Define vesselGeometry of dummy nodes & tree allegiance
     sourceTree = zeros<ivec>(discreteNet.getNnodbc());
     sourceTree.fill(-1);
     for (int inodbc = 0; inodbc < discreteNet.getNnodbc(); inodbc++) {

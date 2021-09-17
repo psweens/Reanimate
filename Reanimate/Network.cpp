@@ -41,8 +41,7 @@ Network::Network() {
     tissDensity = 1027 * 1e-9; // ~Density of tissue, kg / ml (connective tissue)
     bloodDensity = 1060 * 1e-9; // ~Density of blood, kg / ml
 
-    unknownBCs=false;
-
+    phaseseparation = false;
     unknownBCs = false;
     silence = false;
 
