@@ -3,23 +3,14 @@ project(Reanimate)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(CMAKE_C_COMPILER "/usr/local/opt/llvm/bin/clang")
-set(CMAKE_CXX_COMPILER "/usr/local/opt/llvm/bin/clang++")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -O3 -std=c++14 -fopenmp -Wall -DARMA_USE_SUPERLU -DLLVM_TARGETS_TO_BUILD=all -DARMA_OPENMP_THREADS=42")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -O3 -std=c++14 -fopenmp -Wall -DARMA_USE_SUPERLU -DARMA_DONT_USE_WRAPPER -DARMA_DONT_USE_HDF5 -DLLVM_TARGETS_TO_BUILD=all -DARMA_OPENMP_THREADS=42")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -O3 -fopenmp -DARMA_USE_SUPERLU -DARMA_DONT_USE_WRAPPER")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -O3 -std=c++14 -fopenmp -Wall -DARMA_USE_SUPERLU -DARMA_DONT_USE_WRAPPER -DARMA_DONT_USE_HDF5 -DLLVM_TARGETS_TO_BUILD=all -DARMA_OPENMP_THREADS=42")
 
 include_directories(Reanimate)
 include_directories(Reanimate/Misc)
 
-include_directories("/usr/local/include/" "/usr/local/opt/llvm/include/" "/usr/local/opt/armadillo/include/")
-link_directories("/usr/local/lib/" "/usr/local/opt/llvm/lib/" "/usr/local/opt/armadillo/lib/")
-
-link_libraries(-larmadillo)
-#link_libraries(-llapack)
-#link_libraries(-lopenblas)
-#link_libraries(-lsuperlu)
+link_libraries(-llapack)
+link_libraries(-lopenblas)
+link_libraries(-lsuperlu)
 
 add_executable(Reanimate_Update
         Reanimate/main.cpp

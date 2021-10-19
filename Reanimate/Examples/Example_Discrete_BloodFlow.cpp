@@ -17,8 +17,8 @@ void example_Discrete_BloodFlow() {
     Vasculature network;
 
     // Set load and built paths
-    network.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
-    network.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
+    network.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
+    network.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
 
     // Func. creates build path if non-existent (files deleted if folder exists)
     network.setBuildPath(true);

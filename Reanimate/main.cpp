@@ -15,13 +15,10 @@ int main(int argc, char** argv) {
 
     example_Discrete_BloodFlow();
 
-
     // Find shortest path
     Vasculature test;
     test.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
     test.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
-    test.buildPath = "~/Dropbox/Code/C++/Reanimate/Build_Data/";
-    test.loadPath = "~/Dropbox/Code/C++/Reanimate/Load_Data/";
     test.setBuildPath(true);
     test.loadNetwork("1Network.dat");
     test.setStackSize();
