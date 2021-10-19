@@ -58,7 +58,8 @@ namespace reanimate {
         void dfsBranch(int v, int tag, ivec &track, int maxBranch=10);
         void dfsArtic(int v, int p=-1);
         ivec breadthFirstSearch(int nod);
-        ivec findShortestPath(int startnode, int endNode, vec &edgeWeight);
+        ivec findShortestPath(int startnode, int endNode, vec &edgeWeight, bool printPaths=false);
+        void printShortestPaths(int startNode, int endNode, vec distance, ivec pred);
 
         void findArticulationPoints();
         ivec findDeadends();

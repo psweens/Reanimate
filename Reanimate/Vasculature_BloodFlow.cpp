@@ -91,7 +91,7 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
     for (int iter = 1; iter <= nitmax; iter++)  {
 
         // Update relaxation
-        if (iter % 5 == 0 && iter < 100)  {relax *= 0.8;}
+        if (iter % 5 == 0)  {relax *= 0.8;}
         track = iter;
 
 
@@ -221,7 +221,7 @@ void Vasculature::iterateFlowDir(spatGraph &hdGraph)   {
 
             printText("Final ktau/kp = "+to_string(ktau/kp)+", mean wall shear stress = "+to_string(mean(tau))+" dyn/cm2",1);
 
-            for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
+            computeSegpress();
             computeBoundaryFlow();
 
         }
@@ -263,6 +263,13 @@ void Vasculature::computeConductance()   {
         conductance(iseg) = M_PI*pow(tdiam,4)/(128*visc*lseg(iseg));
         c(iseg) = 4*visc/(M_PI*pow(tdiam*0.5,3));
     }
+
+}
+
+void Vasculature::computeSegpress() {
+
+    segpress = zeros<vec>(nseg);
+    for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
 
 }
 
@@ -339,7 +346,7 @@ void Vasculature::mapFlow(Vasculature &Network) {
         if (nodFlag(inod) >= 0) {nodpress(inod) = nodFlag(inod);}
     }
 
-    for (int iseg = 0; iseg < nseg; iseg++) {segpress(iseg) = (nodpress(ista(iseg)) + nodpress(iend(iseg)))/2.;}
+    computeSegpress();
 
     q.zeros();
     tau.zeros();

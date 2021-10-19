@@ -3,8 +3,8 @@
 #include "Vasculature.hpp"
 #include "DiscreteContinuum.hpp"
 #include "MicroCell.hpp"
+#include "Examples/Examples.h"
 #include "omp.h"
-#include "math.h"
 
 using namespace reanimate;
 using namespace std;
@@ -13,6 +13,117 @@ int main(int argc, char** argv) {
 
     omp_set_num_threads(48);
 
+    example_Discrete_BloodFlow();
+
+
+    // Find shortest path
+    Vasculature test;
+    test.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
+    test.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
+    test.buildPath = "~/Dropbox/Code/C++/Reanimate/Build_Data/";
+    test.loadPath = "~/Dropbox/Code/C++/Reanimate/Load_Data/";
+    test.setBuildPath(true);
+    test.loadNetwork("1Network.dat");
+    test.setStackSize();
+    //test.loadDeadEnds = true;
+    test.bloodFlow(true);
+    test.printVisuals(false);
+
+    test.graph.generate(test, true);
+
+    test.rheolParams();
+    //test.hd.fill(test.consthd);
+    test.computeConductance();
+
+    vec tmp = zeros<vec>(test.graph.getNseg());
+    for (int iseg = 0; iseg < test.graph.getNseg(); iseg++) {
+        uvec idx = find(test.graph.segname(iseg) == test.edgeLabels);
+        tmp(iseg) = mean(test.conductance(idx));
+    }
+    tmp /= max(tmp);
+    tmp = 1./ tmp; // Normalised flow resistance
+
+    //cout<<test.hd<<endl;
+
+    vec printPath = zeros<vec>(test.graph.getNseg());
+    int found{},nod1{},nod2{};
+    ivec path;
+    // omp parallel for schedule(auto) default(none) shared(tmp,printPath) private(path,test,nod1,nod2,found)
+    for (int inodbc = 0; inodbc < test.graph.getNnodbc(); inodbc++)   {
+        for (int jnodbc = inodbc+1; jnodbc < test.graph.getNnodbc(); jnodbc++)   {
+            path = test.graph.findShortestPath(test.graph.bcnod(inodbc), test.graph.bcnod(jnodbc), tmp);
+            for (int iseg = 0; iseg < test.graph.getNseg(); iseg++) {
+                found = 0;
+                nod1 = test.graph.ista(iseg);
+                nod2 = test.graph.iend(iseg);
+                for (int inod = 0; inod < (int) path.n_elem; inod++)    {
+                    if (nod1 == path(inod)) {found += 1;}
+                    else if (nod2 == path(inod))    {found += 1;}
+                    if (found == 2) {
+                        printPath(iseg) = 1.;
+                        inod = (int) path.n_elem;
+                    }
+                }
+            }
+        }
+    }
+    //cout<<"here"<<endl;
+    //cout<<test.hd(find(printPath == 1.))<<endl;
+    test.graph.pictureNetwork("ShortestPath.ps", printPath);
+
+
+/*    DiscreteContinuum oNetwork;
+    oNetwork.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
+    oNetwork.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
+    oNetwork.discreteNet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
+    oNetwork.discreteNet.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
+    oNetwork.discreteNet.setBuildPath(true);
+    oNetwork.discreteNet.loadNetwork("SW1/SW1_1.txt");
+    oNetwork.discreteNet.setStackSize();
+    oNetwork.discreteNet.loadDeadEnds = true;
+
+    // Extract subnetwork
+    oNetwork.graph.generate(oNetwork.discreteNet, true);
+    int nod{};
+    int depth{3};
+    for (int inodbc = 0; inodbc < oNetwork.graph.getNnodbc(); inodbc++)   {
+        if (oNetwork.graph.bcnodname(inodbc) == 108)    {
+            nod = oNetwork.graph.bcnod(inodbc);
+            inodbc = oNetwork.graph.getNnodbc();
+        }
+    }
+    ivec order = oNetwork.graph.breadthFirstSearch(nod);
+    vec border = zeros<vec>(oNetwork.graph.getNseg());
+    for (int iseg = 0; iseg < oNetwork.graph.getNseg(); iseg++) {
+        border(iseg) = ceil(0.5*(order(oNetwork.graph.ista(iseg)) + order(oNetwork.graph.iend(iseg))));
+    }
+    ivec remove = zeros<ivec>(oNetwork.discreteNet.getNseg());
+    vec neworder = zeros<vec>(oNetwork.discreteNet.getNseg());
+    for (int iseg = 0; iseg < oNetwork.discreteNet.getNseg(); iseg++)   {
+        for (int jseg = 0; jseg < oNetwork.graph.getNseg(); jseg++)   {
+            if (oNetwork.discreteNet.edgeLabels(iseg) == oNetwork.graph.segname(jseg))  {
+                if (border(jseg) > depth) {remove(iseg) = 1;}
+                neworder(iseg) = border(jseg);
+                jseg = oNetwork.graph.getNseg();
+            }
+        }
+    }
+
+    remove(find(neworder > depth)).fill(1);
+    neworder = neworder(find(neworder <= depth));
+    oNetwork.discreteNet.subNetwork(remove);
+    oNetwork.discreteNet.pictureNetwork("NetworkOrder.ps", neworder);
+    oNetwork.discreteNet.printNetwork("SW_Depth4_Tortuous.txt");
+
+    remove = zeros<ivec>(oNetwork.graph.getNseg());
+    remove(find(border > depth)).fill(1);
+    border = border(find(border <= depth));
+    oNetwork.graph.subNetwork(remove, true);
+    oNetwork.graph.pictureNetwork("GraphOrder.ps", conv_to<vec>::from(border));
+    oNetwork.graph.printNetwork("SW_Depth4_Graph.txt");*/
+
+    // Medulla network
+    // Generate network from Amira file
 /*    Network medulla;
     medulla.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
     medulla.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
@@ -20,6 +131,7 @@ int main(int argc, char** argv) {
     medulla.lthresh = 10.;
     medulla.readAmira("GPUdeconvolved_40_iterations_GL1200_substack_div5-SptGraph.am", "MedullaLRG");*/
 
+    // Base data
     FILE *data;
     data = fopen("/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/Medulla_Trees.txt","r");
     int n = 32;
@@ -29,91 +141,15 @@ int main(int argc, char** argv) {
     }
     fclose(data);
 
-    // Find shortest path
-/*    Vasculature test;
-    test.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
-    test.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
-    test.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
-    test.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
-    test.setBuildPath(true);
-    test.loadNetwork("1Network.dat");
-    test.setStackSize();
-    test.loadDeadEnds = true;
-
-    test.rheolParams();
-    test.hd.fill(0.45);
-    test.computeConductance();
-    int nod{},nod2{};
-    for (int inodbc = 0; inodbc < test.getNnodbc(); inodbc++)   {
-        if (test.bcnodname(inodbc) == 830)    {
-            nod = test.bcnod(inodbc);
-            //inodbc = test.getNnodbc();
-        }
-        if (test.bcnodname(inodbc) == 825)    {
-            nod2 = test.bcnod(inodbc);
-            //inodbc = test.getNnodbc();
-        }
-    }
-    vec tmp = test.conductance * 1e-5;
-    ivec path = test.findShortestPath(nod, nod2, tmp);
-    vec printPath = zeros<vec>(test.getNseg());
-    for (int iseg = 0; iseg < test.getNseg(); iseg++) {
-        uvec idx = find(path == test.ista(iseg));
-        uvec jdx = find(path == test.iend(iseg));
-        if (idx.n_rows > 0 && jdx.n_elem > 0)   {printPath(iseg) = 1.;}
-    }
-    cout<<"here"<<endl;
-    cout<<path.n_elem<<endl;
-    test.pictureNetwork("ShortestPath.ps", printPath);*/
-
-    // Generate discrete flow solution
     DiscreteContinuum hybrid;
     hybrid.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
     hybrid.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
     hybrid.discreteNet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
     hybrid.discreteNet.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
     hybrid.discreteNet.setBuildPath(true);
-    hybrid.discreteNet.loadNetwork("SW1/SW1_1.txt");
+    hybrid.discreteNet.loadNetwork("MedullaSolved.txt");
     hybrid.discreteNet.setStackSize();
     hybrid.discreteNet.loadDeadEnds = true;
-
-    // Extract subnetwork
-    hybrid.graph.generate(hybrid.discreteNet, true);
-    int nod{};
-    int depth{4};
-    for (int inodbc = 0; inodbc < hybrid.graph.getNnodbc(); inodbc++)   {
-        if (hybrid.graph.bcnodname(inodbc) == 215)    {
-            nod = hybrid.graph.bcnod(inodbc);
-            inodbc = hybrid.graph.getNnodbc();
-        }
-    }
-    ivec order = hybrid.graph.breadthFirstSearch(nod);
-    vec border = zeros<vec>(hybrid.graph.getNseg());
-    for (int iseg = 0; iseg < hybrid.graph.getNseg(); iseg++) {
-        border(iseg) = ceil(0.5*(order(hybrid.graph.ista(iseg)) + order(hybrid.graph.iend(iseg))));
-    }
-    ivec remove = zeros<ivec>(hybrid.discreteNet.getNseg());
-    vec neworder = zeros<vec>(hybrid.discreteNet.getNseg());
-    for (int iseg = 0; iseg < hybrid.discreteNet.getNseg(); iseg++)   {
-        for (int jseg = 0; jseg < hybrid.graph.getNseg(); jseg++)   {
-            if (hybrid.discreteNet.edgeLabels(iseg) == hybrid.graph.segname(jseg))  {
-                if (border(jseg) > depth) {remove(iseg) = 1;}
-                neworder(iseg) = border(jseg);
-                jseg = hybrid.graph.getNseg();
-            }
-        }
-    }
-
-    remove(find(neworder > depth)).fill(1);
-    neworder = neworder(find(neworder <= depth));
-    hybrid.discreteNet.subNetwork(remove, false);
-    hybrid.discreteNet.pictureNetwork("NetworkOrder.ps", neworder);
-
-    remove = zeros<ivec>(hybrid.graph.getNseg());
-    remove(find(order > 4)).fill(1);
-    order(find(order > 4)).fill(1);
-    hybrid.graph.subNetwork(remove, true);
-    hybrid.graph.pictureNetwork("GraphOrder.ps", conv_to<vec>::from(order));
 
 /*    ivec flag = zeros<ivec>(hybrid.discreteNet.getNseg());
     flag(find(abs(hybrid.discreteNet.q) < 2.)).fill(1);gsuit
@@ -308,9 +344,10 @@ int main(int argc, char** argv) {
     hybrid.cell.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
     hybrid.cell.setBuildPath(false); // Create build directory / delete contents
 
-    hybrid.cell.setDiamDistrib(hybrid.graph.diam(find(hybrid.graph.vesstyp == 2)));
-    hybrid.cell.setLengthDistrib(hybrid.graph.lseg(find(hybrid.graph.vesstyp == 2)));
-    hybrid.cell.rotationAngle = M_PI / 3.;
+    hybrid.graph.findLengths();
+    hybrid.cell.setEdgeDiamDistrib(hybrid.graph.diam(find(hybrid.graph.vesstyp == 2)));
+    hybrid.cell.setEdgeLengthDistrib(hybrid.graph.lseg(find(hybrid.graph.vesstyp == 2)));
+    //hybrid.cell.rotationAngle = M_PI / 3.;
     hybrid.cell.computeConductivity("crossCell3D");
 
 

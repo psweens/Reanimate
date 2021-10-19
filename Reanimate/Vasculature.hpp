@@ -19,6 +19,7 @@ namespace reanimate {
         template <typename Call>
         void splitHD(Call solver, spatGraph &hdGraph);
         void bloodFlow(bool varviscosity=true, bool phaseseparation=false, bool memoryeffects=false, bool updateBoundaryHD=false, bool skipAnalysis=false);
+        void computeSegpress();
         void computeConductance();
         void printSummary();
         void printVisuals(bool amira=true, bool twoDim=true);

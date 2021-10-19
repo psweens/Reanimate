@@ -123,9 +123,7 @@ void Network::findLengths() {
             End(k,iseg) = cnode(k,iend(iseg));
             ss(k) = End(k,iseg) - Start(k,iseg);
         }
-        if (computeLseg == 1)  {
-            lseg(iseg) = sqrt(pow(ss(0),2) + pow(ss(1),2) + pow(ss(2),2));
-        }
+        lseg(iseg) = sqrt(pow(ss(0),2) + pow(ss(1),2) + pow(ss(2),2));
     }
 
 }

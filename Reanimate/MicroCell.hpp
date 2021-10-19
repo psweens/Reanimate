@@ -21,7 +21,7 @@ namespace reanimate {
 
         bool cell2D;
         double kappa{},rotationAngle{},netVol{},vascDens{},lsegDens{},surfDens{},surfVolRatio{},R{},aniScaleY{1.},aniScaleZ{1.};
-        vec diamDistrib, lengthDistrib;
+        vec diamDistrib, lengthDistrib, eucLengths;
         mat conductivity,cellSegpress;
         void hexCell2D();
         void crossCell2D();
@@ -31,8 +31,9 @@ namespace reanimate {
         void computeConductivity(const string cellType, const int iterations=1e3);
 
         // Setter functions
-        void setDiamDistrib(const vec d);
-        void setLengthDistrib(const vec l);
+        void setEdgeDiamDistrib(const vec d);
+        void setEdgeLengthDistrib(const vec l);
+        void setEucLengthDistrib(const vec l);
         void setRotAngle(const double angle);
 
         MicroCell();

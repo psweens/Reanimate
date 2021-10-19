@@ -116,6 +116,7 @@ void MicroCell::printCellAnalysis(string filename) {
     
 }
 
-void MicroCell::setDiamDistrib(const vec d) {diamDistrib = d;}
-void MicroCell::setLengthDistrib(const vec l) {lengthDistrib = l;}
+void MicroCell::setEdgeDiamDistrib(const vec d) {diamDistrib = d;}
+void MicroCell::setEdgeLengthDistrib(const vec l) {lengthDistrib = l;}
+void MicroCell::setEucLengthDistrib(const vec l)   {eucLengths = l;}
 void MicroCell::setRotAngle(const double angle) {rotationAngle = angle;}

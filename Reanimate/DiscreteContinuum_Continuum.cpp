@@ -24,13 +24,13 @@ void DiscreteContinuum::computeContinuum()  {
     optKappa = cell.kappa; // mm3.s/kg
 
     printText("Calculating capillary drainage via Newton-Raphson scheme");
-/*    NewtRaph();
+    NewtRaph();
     while (terminateNM) {
         printText("Updating hydraulic conductivity");
         terminateNM = false;
         optKappa *= 0.8;
         NewtRaph();
-    }*/
+    }
     int iter{};
     double oldmse{1.e3};
     bool optimiseHybrid = true;

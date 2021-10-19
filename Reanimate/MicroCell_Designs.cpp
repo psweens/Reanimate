@@ -16,8 +16,8 @@ void MicroCell::hexCell2D() {
     for (int iseg = 0; iseg < nseg; iseg++)   {segname(iseg) = iseg;}
     for (int inod = 0; inod < nnod; inod++)   {nodname(inod) = inod;}
 
-    double l_mean = mean(lengthDistrib);
-    double l_SD = stddev(lengthDistrib);
+    double l_mean = mean(eucLengths);
+    double l_SD = stddev(eucLengths);
     int n = 1;
     double Lm = sum(lognormal(l_mean, l_SD, n));
 
@@ -91,6 +91,15 @@ void MicroCell::hexCell2D() {
 
     // Compute lseg vector
     findLengths();
+    l_mean = mean(lengthDistrib);
+    l_SD = stddev(lengthDistrib);
+    double length{},seg{};
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        seg = lseg(iseg);
+        do {length = sum(lognormal(l_mean, l_SD, n));}
+        while (length < seg);
+        lseg(iseg) = length;
+    }
 
     uvec idx = find(nodtyp == 1);
     nnodbc = (int) idx.n_elem;
@@ -136,8 +145,8 @@ void MicroCell::crossCell2D() {
     for (int inod = 0; inod < nnod; inod++)   {nodname(inod) = inod;}
 
     // Randomly assign lengths from lognormal distribution
-    double l_mean = mean(lengthDistrib);
-    double l_SD = stddev(lengthDistrib);
+    double l_mean = mean(eucLengths);
+    double l_SD = stddev(eucLengths);
 
     int n = 1;
     double L1 = sum(lognormal(l_mean, l_SD, n));
@@ -192,6 +201,14 @@ void MicroCell::crossCell2D() {
 
     // Compute lseg vector
     findLengths();
+    l_mean = mean(lengthDistrib);
+    l_SD = stddev(lengthDistrib);
+    double length{},seg{};
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        seg = lseg(iseg);
+        while (length < seg) {length = sum(lognormal(l_mean, l_SD, n));}
+        lseg(iseg) = length;
+    }
 
     // BC node names
     uvec idx = find(nodtyp == 1);
@@ -236,13 +253,13 @@ void MicroCell::crossCell3D() {
     for (int inod = 0; inod < nnod; inod++)   {nodname(inod) = inod;}
 
     // Randomly assign lengths from lognormal distribution
-    double l_mean = mean(lengthDistrib);
-    double l_SD = stddev(lengthDistrib);
-    //mat lengths = branch_angles();
+    double l_mean = mean(eucLengths);
+    double l_SD = stddev(eucLengths);
+
     int n = 1;
-    double L1 = sum(lognormal(l_mean, l_SD, n));//sum(lognrnd(lengths(0,0), lengths(0,1), 1));
-    double L2 = sum(lognormal(l_mean, l_SD, n));//sum(lognrnd(lengths(1,0), lengths(1,1), 1));
-    double L3 = sum(lognormal(l_mean, l_SD, n));//sum(lognrnd(lengths(2,0), lengths(2,1), 1));
+    double L1 = sum(lognormal(l_mean, l_SD, n));
+    double L2 = sum(lognormal(l_mean, l_SD, n));
+    double L3 = sum(lognormal(l_mean, l_SD, n));
 
     // Randomly assign diameters based on lognormal distribution
     double d_mean = mean(diamDistrib);
@@ -283,7 +300,7 @@ void MicroCell::crossCell3D() {
         rotate(1, 0) = sin(rotationAngle);
         rotate(1, 1) = cos(rotationAngle);
         rotate(2, 2) = 1;
-        for (int inod = 0; inod < nnod; inod++) { cnode.col(inod) = rotate * cnode.col(inod); }
+        for (int inod = 0; inod < nnod; inod++) {cnode.col(inod) = rotate * cnode.col(inod); }
     }
 
 
@@ -307,6 +324,14 @@ void MicroCell::crossCell3D() {
 
     // Compute lseg vector
     findLengths();
+    l_mean = mean(lengthDistrib);
+    l_SD = stddev(lengthDistrib);
+    double length{},seg{};
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        seg = lseg(iseg);
+        while (length < seg) {length = sum(lognormal(l_mean, l_SD, n));}
+        lseg(iseg) = length;
+    }
 
     // BC node names
     uvec idx = find(nodtyp == 1);

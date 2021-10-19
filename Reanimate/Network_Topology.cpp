@@ -165,6 +165,8 @@ ivec Network::findDeadends() {
 // Breadth-first search which keeps track of nodal depth
 ivec Network::breadthFirstSearch(int nod)  {
 
+    printText("Initiating bread first search");
+
     // Mark all the vertices as not visited
     visited = -ones<ivec>(nnod);
 
@@ -199,75 +201,65 @@ ivec Network::breadthFirstSearch(int nod)  {
 
 
 // Dijkstra's shortest path algorithm
-ivec Network::findShortestPath(int startnode, int endNode, vec &edgeWeight) {
+ivec Network::findShortestPath(int startnode, int endNode, vec &edgeWeight, bool printPaths) {
 
-    int cntr{1},nextNode{};
+    printText("Finding shortest path");
+
+    int cntr{1},nextNode{},nod1{},nod2{};
     double infinity{1.e20},minDistance{};
-    visited = -ones<ivec>(nnod);
-    vec distance = zeros<vec>(nnod);
-    vec pred = zeros<vec>(nnod);
-    mat cost = infinity*ones<mat>(nnod, nnod);
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        cost(ista(iseg), iend(iseg)) = edgeWeight(iseg);
-        cost(iend(iseg), ista(iseg)) = edgeWeight(iseg);
-    }
+    ivec mapped = -ones<ivec>(nnod);
+    ivec pred = zeros<ivec>(nnod);
+    vec distance = infinity*ones<vec>(nnod);
 
-    for (int inod = 0; inod < nnod; inod++) {
-        distance(inod) = cost(startnode, inod);
-        pred(inod) = startnode;
+    for (int inod = 0; inod < nnod; inod++) {pred(inod) = startnode;}
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        nod1 = ista(iseg);
+        nod2 = iend(iseg);
+        if (nod1 == startnode)    {
+            distance(nod2) = edgeWeight(iseg);
+        }
+        else if (nod2 == startnode)   {
+            distance(nod1) = edgeWeight(iseg);
+        }
     }
     distance(startnode) = 0.;
-    visited(startnode) = 1;
+    mapped(startnode) = 1;
 
     while (cntr < nnod-1) {
         minDistance = infinity;
         for (int inod = 0; inod < nnod; inod++) {
-            if (distance(inod) < minDistance && visited(inod) == -1) {
+            if (distance(inod) < minDistance && mapped(inod) == -1) {
                 minDistance = distance(inod);
                 nextNode = inod;
             }
         }
 
-        visited(nextNode) = 1;
-        for (int inod = 0; inod < nnod; inod++) {
-            if (visited(inod) == -1) {
-                if (minDistance + cost(nextNode, inod) < distance(inod)) {
-                    distance(inod) = minDistance + cost(nextNode, inod);
-                    pred(inod) = nextNode;
+        mapped(nextNode) = 1;
+        for (int iseg = 0; iseg < nseg; iseg++) {
+            nod1 = ista(iseg);
+            nod2 = iend(iseg);
+            if (nextNode == nod1 && mapped(nod2) == -1)   {
+                if (minDistance + edgeWeight(iseg) < distance(nod2))    {
+                    distance(nod2) = minDistance + edgeWeight(iseg);
+                    pred(nod2) = nextNode;
+                }
+            }
+            else if (nextNode == nod2 && mapped(nod1) == -1)   {
+                if (minDistance + edgeWeight(iseg) < distance(nod1))    {
+                    distance(nod1) = minDistance + edgeWeight(iseg);
+                    pred(nod1) = nextNode;
                 }
             }
         }
         cntr += 1;
     }
 
-    int knod{};
-    for (int inod = 0; inod < nnod; inod++) {
-        if (inod != startnode) {
-            cout << "\nDistance of node " << inod << " = " << distance(inod);
-            cout << "\nPath=" << inod;
-            knod = inod;
-            do {
-                knod = pred(knod);
-                cout << "<-" << knod;
-            } while (knod != startnode);
-        }
-    }
+    if (printPaths == true) {printShortestPaths(startnode, endNode, distance, pred);}
 
-    int nod{endNode};
+    printText("Shortest path found. Populating route",2,0);
     cntr = 0;
-    if (nod != startnode) {
-        cout << "\nDistance of node " << nod << " = " << distance(nod);
-        cout << "\nPath=" << nodname(nod);
-        knod = nod;
-        cntr += 1;
-        do {
-            knod = pred(knod);
-            cout << "<-" << nodname(knod);
-            cntr += 1;
-        } while (knod != startnode);
-    }
-    ivec path = zeros<ivec>(cntr);
-    cntr = 0;
+    int knod{},nod{endNode};
+    ivec path = zeros<ivec>(nnod);
     if (nod != startnode) {
         path(cntr) = nod;
         cntr += 1;
@@ -278,7 +270,39 @@ ivec Network::findShortestPath(int startnode, int endNode, vec &edgeWeight) {
             cntr += 1;
         } while (knod != startnode);
     }
+    if (cntr < nnod)    {path.shed_rows(cntr,nnod-1);}
 
     return path;
+
+}
+
+void Network::printShortestPaths(int startNode, int endNode, vec distance, ivec pred)   {
+
+    int knod{};
+    for (int inod = 0; inod < nnod; inod++) {
+        if (inod != startNode) {
+            cout << "\nDistance of node " << inod << " = " << distance(inod);
+            cout << "\nPath=" << inod;
+            knod = inod;
+            do {
+                knod = pred(knod);
+                cout << "<-" << knod;
+            } while (knod != startNode);
+        }
+    }
+
+    int cntr{};
+    int nod{endNode};
+    if (nod != startNode) {
+        cout << "\nDistance of node " << nod << " = " << distance(nod);
+        cout << "\nPath=" << nodname(nod);
+        knod = nod;
+        cntr += 1;
+        do {
+            knod = pred(knod);
+            cout << "<-" << nodname(knod);
+            cntr += 1;
+        } while (knod != startNode);
+    }
 
 }
