@@ -26,4 +26,4 @@ If you wish to cite the Reanimate library in your work, please use the following
 ## Contributing
 The Reanimate C++ library is an open-source project started by [Dr Paul Sweeney](www.psweeney.co.uk) during his PhD at University College London under the supervision of [Prof. Rebecca Shipley](https://mecheng.ucl.ac.uk/people/profile/dr-rebecca-shipley/) and [Prof. Simon Walker-Samuel](http://simonwalkersamuel.com). The package is maintained by Dr Paul Sweeney on Github. All contributions of all types are most welcome!
 
-Contribution guidelines are available here and a list of feature requests can be found here.
+Contribution guidelines are available [here](https://github.com/psweens/Reanimate/blob/master/CONTRIBUTION.md) and a list of feature requests can be found [here](https://github.com/psweens/Reanimate/projects).
