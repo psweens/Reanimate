@@ -12,7 +12,7 @@ Reanimate implements several mathematical models in research literature includin
 * [Blood flow estimation model](https://onlinelibrary.wiley.com/doi/10.1111/j.1549-8719.2012.00184.x) to simulate blood flow in a microvascular network with incomplete boundary conditions.
 * [Interstitial flow model](https://journals.plos.org/ploscompbiol/article/comments?id=10.1371/journal.pcbi.1006751) which uses a Green's function method to simulate transvascular fluid transport.
 
-The Reanimate C++ library is the 2nd generation, user-friendly version of the [code](https://zenodo.org/record/1414160#.YXbN7y1Q1bV) which forms the basis of the REANIMATE (**Rea**listic **N**umerical **I**mage-based **M**odelling of Biologic**a**l **T**issue Substrat**e**s) framework published [here](http://www.nature.com/articles/s41551-018-0306-y) and associate mathematical methods [here](https://journals.plos.org/ploscompbiol/article/comments?id=10.1371/journal.pcbi.1006751).
+The Reanimate C++ library is the 2nd generation, user-friendly version of the [code](https://zenodo.org/record/1414160#.YXbN7y1Q1bV) which forms the basis of the REANIMATE (**Rea**listic **N**umerical **I**mage-based **M**odelling of Biologic**a**l **T**issue Substrat**e**s) framework published [here](http://www.nature.com/articles/s41551-018-0306-y) and corresponding mathematical methods [here](https://journals.plos.org/ploscompbiol/article/comments?id=10.1371/journal.pcbi.1006751).
 
 If you wish to cite the Reanimate library in your work, please use the following references:
 > [Computational fluid dynamics with imaging of cleared tissue and of in vivo perfusion predicts drug uptake and treatment responses in tumours](http://www.nature.com/articles/s41551-018-0306-y)<br>
