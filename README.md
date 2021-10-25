@@ -1,4 +1,4 @@
-# Reanimate: Microvascular Fluid & Mass Transport Solver
+# Reanimate: Microvascular Fluid & Mass Transport Simulator
 
 Reanimate is a C++ library to simulate fluid and mass transport in microvascular tissue. 
 The main goal of this project is to provide a simple and flexible framework to simulate blood flow, interstitial flow, and tracer or drug delivery in large microvascular networks. 
