@@ -22,6 +22,14 @@ If you wish to cite the Reanimate library in your work, please use the following
 > Paul W. Sweeney et al.
 
 ## Installation
+Reanimate is compatible with C++11, and is tested on Ubuntu 18.04 Lts and macOS Big Sur, and Windows. 
+Other distributions of Linux and Windows should work as well.
+
+To install Reanimate from source, download zip file on GitHub page or run the following in a terminal:
+
+```bash
+git clone https://github.com/psweens/Reanimate.git
+```
 
 ## Contributing
 The Reanimate C++ library is an open-source project started by [Dr Paul Sweeney](www.psweeney.co.uk) during his PhD at University College London under the supervision of [Prof. Rebecca Shipley](https://mecheng.ucl.ac.uk/people/profile/dr-rebecca-shipley/) and [Prof. Simon Walker-Samuel](http://simonwalkersamuel.com). The package is maintained by Dr Paul Sweeney on Github. All contributions of all types are most welcome!
