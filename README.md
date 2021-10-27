@@ -22,7 +22,7 @@ If you wish to cite the Reanimate library in your work, please use the following
 > Paul W. Sweeney et al.
 
 ## Installation
-Reanimate is compatible with C++11, and is tested on Ubuntu 18.04 Lts and macOS Big Sur, and Windows. 
+Reanimate is compatible with C++11, and has been tested on Ubuntu 18.04 Lts and macOS Big Sur. 
 Other distributions of Linux and Windows should work as well.
 
 To install Reanimate from source, download zip file on GitHub page or run the following in a terminal:
