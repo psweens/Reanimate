@@ -1,241 +1,105 @@
-//
-//  Network.cpp
-//  TEEPEE
-//
-//  Created by Paul Sweeney on 16/06/2020.
-//  Copyright © 2020 Paul Sweeney. All rights reserved.
-//
-
 #include "Network.hpp"
-#include "misc_func.h"
+#include "spatGraph.hpp"
 
 #include <string>
+#include <dirent.h>
+#include <bits/stdc++.h>
 
 using namespace std;
 using namespace reanimate;
 
+void Network::setBuildPath(bool deleteFiles) {
+
+    printf("Setting build directory ...\n");
+    DIR* dir = opendir(buildPath.c_str());
+    if (dir) {
+        if (deleteFiles) {
+            printf("Directory exists, deleting contents\n");
+            string contents = buildPath + "*";
+            system(("rm " + contents).c_str());
+        }
+    }
+    else {
+        printf("Directory does not exist. Creating folder ...\n");
+        system(("mkdir " + buildPath).c_str());
+    }
+    closedir(dir);
+
+}
+
+
+void Network::startClock()  {
+    clock_t start = clock();
+    printText("Starting timer");
+    timerStart = double(start);
+}
+
+
+void Network::timeCheck()   {
+    clock_t end = clock();
+    double time_taken = (double(end) - timerStart) / double(CLOCKS_PER_SEC);
+    printText("Timer: "+to_string(time_taken)+" sec",2,0);
+}
+
+
 Network::Network() {
 
-    gamma = 1./(1.e3*60);
-    alpha = 0.1333;
+    gamma = 1./(1.e3*60); //  mm3/s / gamma -> nl/min
+    alpha = 0.1333; // kg/mm.s2 / alpha -> mmHg (133.3 Pa)
     beta = 1.e-4;
-    xi = 0.001*1e-3;
+    xi = 1e-6; // kg/mm.s / xi -> cP (1e-3 Pa.s)
 
-    consthd = 0.45;
+    consthd = 0.4;
 
     kp = 0.1;
     ktau = 1.e-4;
+    targPress = 31.;
+    targStress = 15.;
+    empiricalTau0 = false;
+
+    tissDensity = 1027 * 1e-9; // ~Density of tissue, kg / ml (connective tissue)
+    bloodDensity = 1060 * 1e-9; // ~Density of blood, kg / ml
 
     unknownBCs=false;
+
+    unknownBCs = false;
+    silence = false;
+    temp_measure = false;
+
+    rLog = "Reanimate_Log.txt";
 
 }
 Network::~Network() = default;
 
-void Network::setup_networkArrays() {
 
-    ista = zeros<ivec>(nseg);
-    iend = zeros<ivec>(nseg);
-    nodout = zeros<ivec>(nnod);
-    nodrank = zeros<ivec>(nnod);
-    nk = zeros<ivec>(nnod);
-
-    rseg = zeros<vec>(nseg);
-    nodtyp = zeros<ivec>(nnod);
-    bcnod = zeros<ivec>(nnodbc);
-
-    nodnod = zeros<imat>(nodsegm,nnod);
-    nodseg = zeros<imat>(nodsegm,nnod);
-
-}
-
-void Network::setup_flowArrays()    {
-
-    c = zeros<vec>(nseg);
-    conductance = zeros<vec>(nseg);
-    segpress = zeros<vec>(nseg);
-    BCflow = zeros<vec>(nnodbc);
-    BCpress = zeros<vec>(nnodbc);
-    Qo = zeros<vec>(nnod);
-
-    zeroflow = zeros<ivec>(nseg);
-
-    M = zeros<sp_mat>(nseg,nnod);
-    L = zeros<sp_mat>(nnod,nseg);
-
-
-    if (!unknownBCs)    {
-
-        for (int inod = 0; inod < nnod; inod++)    {
-            int countIndx = 0;
-            for (int iseg = 0; iseg < nseg; iseg++)    {
-                if (inod == ista(iseg))   {
-                    L(inod,iseg) = -1.;
-                    countIndx += 1;
-                }
-                else if (inod == iend(iseg))  {
-                    L(inod,iseg) = 1.;
-                    countIndx += 1;
-                }
-                if (nodtyp(inod) == countIndx)  {
-                    iseg = nseg;
-                }
-            }
-        }
-
-    }
-
-
-}
-
-void Network::setup_estimationArrays()  {
-
-    // Creating an index to flag boundary nodes with unknown boundary conditions
-    unknownnod = zeros<ivec>(nnod);
-    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-        if (bctyp(inodbc) == 3)    {
-            unknownnod(bcnod(inodbc)) = 1;
-        }
-    }
-    nunknown = (int) accu(unknownnod);
-    cout<<"Total unknown conditions = "<<nunknown<<" ("<<100*(float(nunknown)/float(nnodbc))<<"%)"<<endl;
-    nIBnod = nnod - nunknown; // No. of internal and known boundary nodes
-    estimationarraysize = nnod + nIBnod;
-
-    // Flow reversal storage
-    storeBC = bcprfl;
-    storeBCtyp = bctyp;
-    storeBChd = bchd;
-    storeHD = hd;
-
-    // Store previous flow iterations
-    oldFlowsign = zeros<vec>(nseg);
-    oldTau = zeros<vec>(nseg);
-    oldHd = zeros<vec>(nseg);
-    oldq = zeros<vec>(nseg);
-    oldNodpress = zeros<vec>(nnod);
-
-    flowsign = zeros<vec>(nseg);
-    tau0 = zeros<vec>(nseg);
-    p0 = zeros<vec>(nnod);
-    Qo = zeros<vec>(nIBnod);
-    B = zeros<vec>(estimationarraysize);
-
-    A = zeros<sp_mat>(estimationarraysize,estimationarraysize);
-    H1 = zeros<sp_mat>(nnod,nseg);
-    H2 = zeros<sp_mat>(nseg,nnod);
-    W = zeros<sp_mat>(nnod,nnod);
-    L = zeros<sp_mat>(nIBnod,nseg);
-
-    // Check haematocrit
-    if (accu(hd) == 0.) {hd.fill(consthd);}
-    if (accu(bchd) == 0.)   {hd.fill(consthd);}
-
-    // Assign target pressure
-    targPress = 31.;//mean(bcprfl(find(bctyp == 0))); // Set target pressure as the mean of the assign boundary pressure conditions
-    cout<<"Target Pressure = "<<targPress<<" mmHg"<<endl;
-    p0.fill(targPress * alpha);
-
-    // Target shear stress - intially set with random directions unless network flow is known
-    targStress = 15.;
-    cout<<"Target Wall Shear Stress = "<<targStress<<" dyn/cm2"<<endl;
-    targStress *= beta;
-    int ran{};
-    srand((u_int) time(0));
-    for (int iseg = 0; iseg < nseg; iseg++)    {
-        ran = rand()%2;
-        if (ran == 0)   {
-            ran = -1;
-        }
-        tau0(iseg) = targStress*ran;
-    }
-    if (accu(q) > 0.0)  {
-        tau0 = abs(tau0);
-        tau0 %= sign(q);
-        cout<<"Wall shear stress initialised using network file flow direction ..."<<endl;
-    }
-
-
-    // Constructing vector Qo
-    int cntr{};
-    for (int inod = 0; inod < nnod; inod++) {
-        if (unknownnod(inod) == 0)  {
-            for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-                if (inod == bcnod(inodbc) && bctyp(inodbc) == 0) {
-                    Qo(inod - cntr) = -bcprfl(inodbc)*alpha;
-                }
-                else if (inod == bcnod(inodbc) && (bctyp(inodbc) == 1 || bctyp(inodbc) == 2))  {
-                    Qo(inod - cntr) = bcprfl(inodbc)*gamma;
-                }
-            }
-        }
-        else {
-            cntr += 1;
-        }
-    }
-
-
-    // Construct W matrix
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        long tista = ista(iseg);
-        long tiend = iend(iseg);
-        double tlseg = lseg(iseg);
-        W(tista,tista) += (0.5*kp*tlseg);
-        W(tiend,tiend) += (0.5*kp*tlseg);
-    }
-
-
-    // Construct L matrix
-    cntr = 0;
-    for (int inod = 0; inod < nnod; inod++)    {
-        if (unknownnod(inod) == 0)  {
-            int idx = 0;
-            for (int iseg = 0; iseg < nseg; iseg++)    {
-                if (inod == ista(iseg))   {
-                    L(inod-cntr,iseg) = -1.;
-                    idx += 1;
-                }
-                else if (inod == iend(iseg))  {
-                    L(inod-cntr,iseg) = 1.;
-                    idx += 1;
-                }
-                if (nodtyp(inod) == idx)  {
-                    iseg = nseg;
-                }
-            }
-        }
-        else    {
-            cntr += 1;
-        }
-    }
-
-    // Partially construct B vector
-    B(span(0,nIBnod-1)) = -Qo;
-
-}
-
-void Network::loadNetwork(const string& filepath)   {
+void Network::loadNetwork(const string &filename, const bool directFromAmira)   {
     
     int max=200;
     char bb[200];
 
-    networkPath = filepath;
+    if (!directFromAmira)   {networkPath = loadPath + filename;}
+    else {networkPath = buildPath + filename;}
+    initLog(); // Initialise log
 
     FILE *ifp;
-
-    cout<<"\nImporting network data..."<<endl;
-    ifp = fopen(filepath.c_str(),"r");
+    ifp = fopen(networkPath.c_str(),"r");
 
     fgets(bb,max,ifp);
-    printf("%s",bb);
-    
+    bb[strcspn(bb, "\n")] = 0;
     networkName = bb;
+
+    printText(networkName, 3);
+    printText("Importing network data");
     
-    fscanf(ifp, "%f %f %f", &alx,&aly,&alz); fgets(bb,max,ifp);
-    fscanf(ifp, "%i %i %i", &mxx,&myy,&mzz); fgets(bb,max,ifp);
-    fscanf(ifp, "%f", &lb); fgets(bb,max,ifp);
-    fscanf(ifp, "%f", &maxl); fgets(bb,max,ifp);
-    fscanf(ifp,"%i", &nodsegm);
+    fscanf(ifp, "%lf %lf %lf\n", &alx,&aly,&alz); fgets(bb,max,ifp);
+    fscanf(ifp, "%lli %lli %lli\n", &mxx,&myy,&mzz); fgets(bb,max,ifp);
+    fscanf(ifp, "%lf\n", &lb); fgets(bb,max,ifp);
+    fscanf(ifp, "%lf\n", &maxl); fgets(bb,max,ifp);
+    fscanf(ifp,"%lli", &nodsegm);
     fgets(bb,max,ifp);
+    nodsegm = 35;
+
+    printText("Tissue Dimensions (x,y,z) = " + to_string(int(alx)) + " um x " + to_string(int(aly)) + " um x " + to_string(int(alz)) + " um", 1, 0);
     
     // Number of segments in vessel network
     fscanf(ifp,"%i", &nseg); fgets(bb,max,ifp);
@@ -265,10 +129,11 @@ void Network::loadNetwork(const string& filepath)   {
         }
     }
     else    {
-        printf("*** Error in Network File: Invalid Segment Format ***");
+        printText("Network File -> Invalid Segment Format",4);
     }
+    qq = abs(q);
 
-    
+
     // Number of nodes in vessel network
     fscanf(ifp,"%i", &nnod);
     fgets(bb,max,ifp);
@@ -291,14 +156,14 @@ void Network::loadNetwork(const string& filepath)   {
         }
     }
     else    {
-        printf("*** Error in Network File: Invalid Node Format ***");
+        printText("Network file -> Invalid Node Format",4);
     }
     
     // Boundary nodes
     fscanf(ifp,"%i", &nnodbc);
     fgets(bb,max,ifp);
     fgets(bb,max,ifp);
-    
+
     bcnodname = zeros<ivec>(nnodbc);
     bctyp = zeros<ivec>(nnodbc);
     bcprfl = zeros<vec>(nnodbc);
@@ -313,9 +178,9 @@ void Network::loadNetwork(const string& filepath)   {
         bcp = zeros<mat>(nnodbc,nsol);
     }
     else if (nsol > 4)  {
+        nsol -= 4; // Count extra solutes
+        bcp = zeros<mat>(nnodbc,nsol);
         for(int inodbc = 0; inodbc < nnodbc; inodbc++){
-            nsol -= 4; // Count extra solutes (exc. PO2)
-            bcp = zeros<mat>(nnodbc,nsol);
             fscanf(ifp,"%lli %lli %lf %lf", &bcnodname(inodbc),&bctyp(inodbc),&bcprfl(inodbc),&bchd(inodbc));
             for (int i = 0; i < nsol; i++)  {
                 fscanf(ifp," %lf",&bcp(inodbc,i));
@@ -324,7 +189,7 @@ void Network::loadNetwork(const string& filepath)   {
         }
     }
     else    {
-        printf("*** Error in Network File: Invalid Boundary Node Format ***");
+        printText("Network file -> Invalid Boundary Node Format",4);
     }
     
     fclose(ifp);
@@ -333,181 +198,67 @@ void Network::loadNetwork(const string& filepath)   {
 
     setup_networkArrays();
     analyse_network();
-}
+    edgeNetwork();
+    printNetwork("loadedNetworkFile.txt");
 
-void Network::analyse_network()   {
-
-    printf("No. of segments = %i\n",nseg);
-    printf("No. of nodes = %i\n",nnod);
-    printf("No. of boundary nodes = %i\n",nnodbc);
-
-    for (int iseg = 0; iseg < nseg; iseg++)	{
-        //Search for nodes corresponding to this segment
-        for (int i = 0; i < 2; i++) {
-            for (int inod = 0; inod < nnod; inod++) {
-                if (nodname(inod) == segnodname(i,iseg))    {
-                    if (i == 0) {
-                        ista(iseg) = inod;
-                        goto foundit;
-                    }
-                    else if (i == 1)    {
-                        iend(iseg) = inod;
-                        goto foundit;
-                    }
-                }
-            }
-            printf("*** Error: No matching node found for segname %lli\n", segname(iseg));
-            foundit:;
-        }
-    }
-
-
-    // Setup nodtyp, nodseg and nodnod
-    // 'nodseg' -> for each nodes, store the corresponding segment index
-    // 'nodnod' -> for each node, store the nodal index of the opposite side of the segment
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        int inod1 = (int) ista(iseg);
-        int inod2 = (int) iend(iseg);
-        nodtyp(inod1) += 1;
-        nodtyp(inod2) += 1;
-        if (nodtyp(inod1) > nodsegm) {
-            printf("*** Error: Too many segments connected to node %i\n", inod1);
-        }
-        if (nodtyp(inod2) > nodsegm) {
-            printf("*** Error: Too many segments connected to node %i\n", inod2);
-        }
-        // "-1" due to indexing starting at zero
-        nodseg(nodtyp(inod1) - 1,inod1) = iseg;
-        nodseg(nodtyp(inod2) - 1,inod2) = iseg;
-        nodnod(nodtyp(inod1) - 1,inod1) = inod2;
-        nodnod(nodtyp(inod2) - 1,inod2) = inod1;
-    }
-
-    for (int inodbc = 0; inodbc < nnodbc; inodbc++){
-        // Search for node corresponding to this node name
-        for (int inod = 0; inod < nnod; inod++) {
-            if(nodname(inod) == bcnodname(inodbc))  {
-                bcnod(inodbc) = inod;
-                if(nodtyp(inod) != 1)   {
-                    printf("*** Error: Boundary node %lli is not a 1-segment node\n", nodname(inod));
-                }
-                goto foundit2;
-            }
-        }
-        printf("*** Error: No matching node found for nodname %lli, inodbc %i\n", bcnodname(inodbc),inodbc);
-        foundit2:;
-    }
-
-
-    // Start(k,iseg) = coordinates of starting point of segment iseg
-    // End(k,iseg) = coordinates of ending point of segment iseg
-    computeLseg = 1;
-    qq = abs(q);
-    vec ss = zeros<vec>(3);
-    mat Start = zeros<mat>(3,nseg);
-    mat End = zeros<mat>(3,nseg);
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        rseg(iseg) = diam(iseg) / 2.0;
-        qq(iseg) = abs(q(iseg));
-        for (int k = 0; k < 3; k++){
-            Start(k,iseg) = cnode(k,ista(iseg));
-            End(k,iseg) = cnode(k,iend(iseg));
-            ss(k) = End(k,iseg) - Start(k,iseg);
-        }
-        if (computeLseg == 1)  {
-            lseg(iseg) = sqrt(pow(ss(0),2) + pow(ss(1),2) + pow(ss(2),2));
-        }
-    }
-
-    BCgeo = zeros<ivec>(nnodbc);
-    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-        for (int iseg = 0; iseg < nseg; iseg++) {
-            if (bcnod(inodbc) == ista(iseg) || bcnod(inodbc) == iend(iseg)) {
-                if (vesstyp(iseg) == 1)    {
-                    BCgeo(inodbc) = 1;
-                }
-                else if (vesstyp(iseg) == 2)   {
-                    BCgeo(inodbc) = 2;
-                }
-                else {
-                    BCgeo(inodbc) = 3;
-                }
-            }
-        }
-    }
+    field<string> headers(2,1);
+    headers(0,0) = "Diameter";
+    headers(1,0) = "Length";
+    mat data = zeros<mat>(nseg,2);
+    data.col(0) = diam;
+    data.col(1) = lseg;
+    printHistogram("DiamLength_HistogramData.txt", data, headers);
 
 }
 
-void Network::subNetwork(ivec &index) {
-    
-    cout<<"Creating subnetwork..."<<endl;
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        if (index(iseg) == 1)   {
-            segname.shed_row(iseg);
-            vesstyp.shed_row(iseg);
-            segnodname.shed_col(iseg);
-            diam.shed_row(iseg);
-            lseg.shed_row(iseg);
-            q.shed_row(iseg);
-            hd.shed_row(iseg);
-            index.shed_row(iseg);
-            nseg -= 1;
-            iseg = 0;
-        }
+
+void Network::subNetwork(ivec &index, bool graph, bool print) {
+
+    if (print) {printText("Creating subnetwork");}
+
+    uvec idx = find(index == 1);
+    segname.shed_rows(idx);
+    vesstyp.shed_rows(idx);
+    segnodname.shed_cols(idx);
+    diam.shed_rows(idx);
+    lseg.shed_rows(idx);
+    q.shed_rows(idx);
+    hd.shed_rows(idx);
+    if (edgeLabels.n_elem > 0) {
+        edgeLabels.shed_rows(idx);
+        elseg.shed_rows(idx);
+        ediam.shed_rows(idx);
     }
-    
+    if (segpress.n_elem > 0)    {
+        segpress.shed_rows(idx);
+        qq.shed_rows(idx);
+    }
+    index.shed_rows(idx);
+    nseg = segname.n_elem;
+
+
+    // Populate connectivity indices
     ista = zeros<ivec>(nseg);
     iend = zeros<ivec>(nseg);
-    for (int iseg = 0; iseg < nseg; iseg++)    {
-        //Search for nodes corresponding to this segment
-        for (int i = 0; i < 2; i++) {
-            for (int inod = 0; inod < nnod; inod++) {
-                if (nodname(inod) == segnodname(i,iseg))    {
-                    if (i == 0) {
-                        ista(iseg) = inod;
-                        goto foundit;
-                    }
-                    else if (i == 1)    {
-                        iend(iseg) = inod;
-                        goto foundit;
-                    }
-                }
-            }
-            printf("*** Error: No matching node found for segname %lli\n", segname(iseg));
-        foundit:;
-        }
-    }
+    indexSegmentConnectivity();
     
     
-    //Setup nodtyp, nodseg and nodnod
+    // Update nodes types
     nodtyp.zeros();
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        int inod1 = (int) ista(iseg);
-        int inod2 = (int) iend(iseg);
-        nodtyp(inod1) += 1;
-        nodtyp(inod2) += 1;
-        if(nodtyp(inod1) > nodsegm) {
-            printf("*** Error: Too many segments connected to node %i\n", inod1);
-        }
-        if(nodtyp(inod2) > nodsegm) {
-            printf("*** Error: Too many segments connected to node %i\n", inod2);
-        }
-    }
-    
-    for (int inod = 0; inod < nnod; inod++) {
-        if (nodtyp(inod) == 0)  {
-            nodname.shed_row(inod);
-            nodtyp.shed_row(inod);
-            cnode.shed_col(inod);
-            inod = 0;
-            nnod -= 1;
-        }
-    }
-    
+    indexNodeConnectivity();
+    idx = find(nodtyp == 0);
+    nodname.shed_rows(idx);
+    nodtyp.shed_rows(idx);
+    cnode.shed_cols(idx);
+    if (nodpress.n_elem > 0)    {nodpress.shed_rows(idx);}
+    nnod = nodname.n_elem;
+
+
+    // Update boundary nodes
     ivec copyBCnodname = bcnodname;
     ivec copyBCtyp = bctyp;
     vec copyBCprfl = bcprfl;
-    
+    vec copyBCHD = bchd;
     nnodbc = 0;
     for (int inod = 0; inod < nnod; inod++) {
         if (nodtyp(inod) == 1)  {
@@ -519,28 +270,62 @@ void Network::subNetwork(ivec &index) {
     bctyp = zeros<ivec>(nnodbc);
     bcprfl = zeros<vec>(nnodbc);
     bchd = zeros<vec>(nnodbc);
-    bchd.fill(0.4);
+    bchd = zeros<vec>(nnodbc);
+    BCgeo = zeros<ivec>(nnodbc);
     
     int jnodbc = 0;
+    int found{};
     for (int inod = 0; inod < nnod; inod++) {
         if (nodtyp(inod) == 1)  {
             bcnodname(jnodbc) = nodname(inod);
-            for (int knodbc = 0; knodbc < copyBCnodname.n_elem; knodbc++)   {
+            for (int knodbc = 0; knodbc < (int) copyBCnodname.n_elem; knodbc++)   {
                 if (bcnodname(jnodbc) == copyBCnodname(knodbc)) {
                     bctyp(jnodbc) = copyBCtyp(knodbc);
                     bcprfl(jnodbc) = copyBCprfl(knodbc);
-                    goto here;
-                }
-                else {
-                    bctyp(jnodbc) = 3;
+                    bchd(jnodbc) = copyBCHD(knodbc);
+                    knodbc = copyBCnodname.n_elem;
+                    found = 1;
                 }
             }
-        here:;
+            if (found == 0) {
+                bctyp(jnodbc) = -3;
+            }
             jnodbc += 1;
+            found = 0;
         }
     }
-    
-    printf("Subnetwork: No. of segments = %i\n",nseg);
-    printf("Subnetwork: No. of nodes = %i\n",nnod);
-    printf("Subnetwork: No. of boundary nodes = %i\n",nnodbc);
+
+    setup_networkArrays();
+    analyse_network(graph,print);
+
+}
+
+void Network::removeNewBC(ivec storeBCnodname, bool print, bool graph) {
+
+    ivec newBC = zeros<ivec>(nnod);
+    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+        uvec idx = find(bcnodname(inodbc) == storeBCnodname);
+        if (idx.n_elem == 0)    {newBC(bcnod(inodbc)) = 1;}
+    }
+
+    ivec removeBridge = zeros<ivec>(nnod);
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        ivec tagNode = -ones<ivec>(nnod);
+        if (newBC(ista(iseg)) == 1)    {
+            dfsBasic(iend(iseg),1,tagNode, true, 2);
+            tagNode(ista(iseg)) = 1;
+        }
+        else if (newBC(iend(iseg)) == 1)   {
+            dfsBasic(ista(iseg),1,tagNode, true, 2);
+            tagNode(iend(iseg)) = 1;
+        }
+        uvec idx  = find(tagNode == 1);
+        if (idx.n_elem > 0) {removeBridge(idx).fill(1);}
+    }
+    ivec removeSegments = zeros<ivec>(nseg);
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        if (removeBridge(ista(iseg)) == 1 && removeBridge(iend(iseg)) == 1) {removeSegments(iseg) = 1;}
+    }
+    subNetwork(removeSegments, graph, print);
+
 }

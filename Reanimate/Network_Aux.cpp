@@ -1,32 +1,16 @@
-//
-//  pearson_coeff.cpp
-//  Vascular-Flow
-//
-//  Created by Paul Sweeney on 31/08/2016.
-//  Copyright © 2016 Paul Sweeney - University College London. All rights reserved.
-//
-
-#include <stdio.h>
-#include <armadillo>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include "omp.h"
-
-
+#include "Network.hpp"
 
 using namespace std;
-using namespace arma;
+using namespace reanimate;
 
-double pearson_coeff(vec vec1, vec vec2, int num)    {
+/*double pearson_coeff(vec vec1, vec vec2, int num)    {
     
     double r = (num*accu(vec1%vec2) - accu(vec1)*accu(vec2))/(sqrt(num*accu(pow(vec1,2)) - pow(accu(vec1),2))*sqrt(num*accu(pow(vec2,2)) - pow(accu(vec2),2)));
     
     return r;
-}
+}*/
 
-
-int detect_col(FILE *ifp)    {
+int Network::detect_col(FILE *ifp)    {
     
     int max=200;
     char bb[200];
@@ -48,71 +32,169 @@ int detect_col(FILE *ifp)    {
 }
 
 // Initiate log file
-/*void init_log(FILE *ofp, const string &local)    {
-    
-    string rootname = root + local;
-    ofp = fopen(rootname.c_str(),"w");
+void Network::initLog()    {
+
+    FILE *ofp;
+    ofp = fopen((buildPath + rLog).c_str(),"w");
     fclose(ofp);
     
 }
-
 
 // Output and log text
-void outputt(FILE *ofp, const string &local, const string &state)   {
-    
-    string rootname = root + local;
-    ofp = fopen(rootname.c_str(),"a");
-    
-    printf("%s\n",state.c_str());
-    fprintf(ofp,"%s\n",state.c_str());
-    
-    fclose(ofp);
+void Network::printText(const string &text, const int type, const int newline)   {
+
+    // Type: (1) normal text, (2) loading description, (3) module, (4) error, (5) warning
+    if (!silence)   {
+
+        FILE *ofp;
+        ofp = fopen((buildPath + rLog).c_str(),"a");
+        if (type == 2)  {
+            if (newline == 1)   {
+                printf("\n%s ...\n", text.c_str());
+                fprintf(ofp, "\n%s ... \n", text.c_str());
+            }
+            else {
+                printf("%s ...\n", text.c_str());
+                fprintf(ofp, "%s ... \n", text.c_str());
+            }
+        }
+        else if (type == 3) {
+            printf("\n\n");
+            fprintf(ofp, "\n\n");
+            for (int i = 0; i < (int) text.length(); i++)  {
+                printf("-");
+                fprintf(ofp, "-");
+            }
+            printf("\n%s\n", text.c_str());
+            fprintf(ofp, "\n%s\n", text.c_str());
+            for (int i = 0; i < (int) text.length(); i++) {
+                printf("-");
+                fprintf(ofp, "-");
+            }
+            printf("\n");
+            fprintf(ofp, "\n");
+        }
+        else if (type == 4) {
+            printf("*** ERROR: %s ***\n",text.c_str());
+            fprintf(ofp, "*** ERROR: %s ***\n",text.c_str());
+        }
+        else if (type == 5) {
+            printf("*** WARNING: %s ***\n",text.c_str());
+            fprintf(ofp, "*** WARNING: %s ***\n",text.c_str());
+        }
+        else if (type == 6) {
+            printf("\n\n");
+            fprintf(ofp, "\n\n");
+            for (int i = 0; i < (int) text.length(); i++)  {
+                printf("-");
+                fprintf(ofp, "-");
+            }
+            printf(" %s ", text.c_str());
+            fprintf(ofp, " %s ", text.c_str());
+            for (int i = 0; i < (int) text.length(); i++) {
+                printf("-");
+                fprintf(ofp, "-");
+            }
+
+            printf("\n");
+            fprintf(ofp, "\n");
+
+        }
+        else {
+            if (newline == 1)   {
+                printf("\n%s\n", text.c_str());
+                fprintf(ofp, "\n%s\n", text.c_str());
+            }
+            else if (newline == -1) {
+                printf("%s", text.c_str());
+                fprintf(ofp, "%s", text.c_str());
+            }
+            else    {
+                printf("%s\n", text.c_str());
+                fprintf(ofp, "%s\n", text.c_str());
+            }
+        }
+
+        fclose(ofp);
+
+    }
     
 }
 
 // Output and log "string : float dimensions"
-void outputf(FILE *ofp, const string &local, const string &text, const double &num, const string &unit)   {
-    
-    string rootname = root + local;
-    ofp = fopen(rootname.c_str(),"a");
-    
-    if (round(num) == num)  {
-        printf("%s %i %s\n",text.c_str(),(int) num,unit.c_str());
-        fprintf(ofp,"%s %i %s\n",text.c_str(),(int) num,unit.c_str());
+void Network::printNum(const string &text, const double &num, const string unit)   {
+
+    if (!silence)   {
+
+        FILE *ofp;
+        ofp = fopen((buildPath + rLog).c_str(),"a");
+
+        if (round(num) == num)  {
+            printf("%s %i %s\n",text.c_str(),(int) num,unit.c_str());
+            fprintf(ofp,"%s %i %s\n",text.c_str(),(int) num,unit.c_str());
+        }
+        else if (num < 1e-3)    {
+            printf("%s %.2e %s\n",text.c_str(),num,unit.c_str());
+            fprintf(ofp,"%s %.4e %s\n",text.c_str(),num,unit.c_str());
+        }
+        else {
+            printf("%s %.3f %s\n",text.c_str(),num,unit.c_str());
+            fprintf(ofp,"%s %.5f %s\n",text.c_str(),num,unit.c_str());
+        }
+
+        fclose(ofp);
+
     }
-    else if (num < 1e-3)    {
-        printf("%s %.2e %s\n",text.c_str(),num,unit.c_str());
-        fprintf(ofp,"%s %.4e %s\n",text.c_str(),num,unit.c_str());
-    }
-    else {
-        printf("%s %.3f %s\n",text.c_str(),num,unit.c_str());
-        fprintf(ofp,"%s %.5f %s\n",text.c_str(),num,unit.c_str());
-    }
-    
-    fclose(ofp);
 
 }
 
 // Output and log "string : float dimensions"
-void output2f(FILE *ofp, const string &local, const string &text, const double &num1, const double &num2, const string &unit)   {
-    
-    string rootname = root + local;
-    ofp = fopen(rootname.c_str(),"a");
-    
-    if (num1 < 1e-3)    {
-        printf("%s %.2e ± %.4e %s\n",text.c_str(),num1,num2,unit.c_str());
-        fprintf(ofp,"%s %.4e ± %.4e %s\n",text.c_str(),num1,num2,unit.c_str());
+void Network::printStat(const string &text, const vec &n, const string &unit)   {
+
+    if (!silence)   {
+
+        FILE *ofp;
+        ofp = fopen((buildPath + rLog).c_str(),"a");
+
+        if (mean(n) < 1e-3)    {
+            printf("%s %.2e ± %.4e %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
+            fprintf(ofp,"%s %.4e ± %.4e %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
+        }
+        else {
+            printf("%s %.3f ± %.3f %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
+            fprintf(ofp,"%s %.5f ± %.5f %s\n",text.c_str(),mean(n),stddev(n),unit.c_str());
+        }
+
+        fclose(ofp);
+
     }
-    else {
-        printf("%s %.3f ± %.3f %s\n",text.c_str(),num1,num2,unit.c_str());
-        fprintf(ofp,"%s %.5f ± %.5f %s\n",text.c_str(),num1,num2,unit.c_str());
-    }
-    
-    fclose(ofp);
     
 }
 
+void Network::findBoundingBox() {
 
+    double xmin = cnode.row(0).min();
+    double ymin = cnode.row(1).min();
+    double zmin = cnode.row(2).min();
+
+    if (xmin >= 0.) {cnode.row(0) -= xmin;}
+    else {cnode.row(0) += abs(xmin);}
+
+    if (ymin >= 0.) {cnode.row(1) -= ymin;}
+    else {cnode.row(1) += abs(ymin);}
+
+    if (zmin >= 0.) {cnode.row(2) -= zmin;}
+    else {cnode.row(2) += abs(zmin);}
+
+    alx = cnode.row(0).max();
+    aly = cnode.row(1).max();
+    alz = cnode.row(2).max();
+    if (alz == 0.)  {alz = diam.max();}
+
+}
+
+
+/*
 int max_double(const double &a, const double &b) {
     
     if (a > b)  {
@@ -292,57 +374,6 @@ void time_check(FILE *ift, const string &local, double &run_start, const string 
         outputf(ift,local,text, time_span,"seconds");
     }
     
-}
+}*/
 
 
-// Output data for angiogenesis modelling
-void ascii_output(const string &filename)   {
-    
-    FILE *ofp;
-    
-    string rootname = root + filename;
-    
-    ofp = fopen(rootname.c_str(),"w");
-    
-    // Calculate nodal radii
-    vec n_radii = zeros<vec>(nnod);
-    int cntr = 0;
-    for (int inod = 0; inod < nnod; inod++) {
-        for (int iseg = 0; iseg < nseg; iseg++) {
-            if (ista(iseg) == inod || iend(iseg) == inod)   {
-                n_radii(inod) += rseg(iseg);
-                cntr += 1;
-            }
-            if (cntr == nodtyp(inod))    {
-                iseg = nseg;
-            }
-        }
-        n_radii(inod) /= cntr;
-        cntr = 0;
-    }
-
-    fprintf(ofp,"%i\n",nnod);
-    for (int inod = 0; inod < nnod; inod++) {
-        fprintf(ofp,"%i %lf %lf %lf %lf\n",inod,cnode(0,inod),cnode(1,inod),cnode(2,inod),n_radii(inod));
-    }
-    fprintf(ofp,"%i\n",nseg);
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        fprintf(ofp,"%i %lli %lli\n",iseg,ista(iseg),iend(iseg));
-    }
-    fprintf(ofp,"%i\n",nnodbc);
-    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-        if (BCflow(inodbc) > 0. && BCflow(inodbc) < 1e-8)    {
-            fprintf(ofp,"%lli %i\n",bcnod(inodbc),106);
-        }
-        else if (BCflow(inodbc) > 0.)    {
-            fprintf(ofp,"%lli %i\n",bcnod(inodbc),101);
-        }
-        else if (BCflow(inodbc) < 0.)    {
-            fprintf(ofp,"%lli %i\n",bcnod(inodbc),102);
-        }
-    }
-    
-    fclose(ofp);
-    */
-    
-//}
