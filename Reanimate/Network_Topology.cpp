@@ -1,4 +1,5 @@
 #include "Network.hpp"
+#include "omp.h"
 #include <list>
 
 using namespace std;
@@ -203,51 +204,39 @@ ivec Network::breadthFirstSearch(int nod)  {
 // Dijkstra's shortest path algorithm
 ivec Network::findShortestPath(int startnode, int endNode, vec &edgeWeight, bool printPaths) {
 
-    printText("Finding shortest path");
+    //printText("Finding shortest path");
 
-    int cntr{1},nextNode{},nod1{},nod2{};
-    double infinity{1.e20},minDistance{};
+    int cntr{1},nextNode{},nod{};
+    double infinity{1.e20},minDistance{},tmp{};
     ivec mapped = -ones<ivec>(nnod);
     ivec pred = zeros<ivec>(nnod);
     vec distance = infinity*ones<vec>(nnod);
 
-    for (int inod = 0; inod < nnod; inod++) {pred(inod) = startnode;}
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        nod1 = ista(iseg);
-        nod2 = iend(iseg);
-        if (nod1 == startnode)    {
-            distance(nod2) = edgeWeight(iseg);
-        }
-        else if (nod2 == startnode)   {
-            distance(nod1) = edgeWeight(iseg);
-        }
+    pred.fill(startnode);
+    for (int inod = 0; inod < nodtyp(startnode); inod++)    {
+        distance(nodnod(inod, startnode)) = edgeWeight(nodseg(inod, startnode));
     }
     distance(startnode) = 0.;
     mapped(startnode) = 1;
 
+    ivec mapSeg = zeros<ivec>(nseg);
     while (cntr < nnod-1) {
         minDistance = infinity;
         for (int inod = 0; inod < nnod; inod++) {
-            if (distance(inod) < minDistance && mapped(inod) == -1) {
+            if (mapped(inod) == -1 && distance(inod) < minDistance) {
                 minDistance = distance(inod);
                 nextNode = inod;
             }
         }
 
         mapped(nextNode) = 1;
-        for (int iseg = 0; iseg < nseg; iseg++) {
-            nod1 = ista(iseg);
-            nod2 = iend(iseg);
-            if (nextNode == nod1 && mapped(nod2) == -1)   {
-                if (minDistance + edgeWeight(iseg) < distance(nod2))    {
-                    distance(nod2) = minDistance + edgeWeight(iseg);
-                    pred(nod2) = nextNode;
-                }
-            }
-            else if (nextNode == nod2 && mapped(nod1) == -1)   {
-                if (minDistance + edgeWeight(iseg) < distance(nod1))    {
-                    distance(nod1) = minDistance + edgeWeight(iseg);
-                    pred(nod1) = nextNode;
+        for (int inod = 0; inod < nodtyp(nextNode); inod++)    {
+            nod = nodnod(inod, nextNode);
+            if (mapped(nod) == -1)   {
+                tmp = minDistance + edgeWeight(nodseg(inod, nextNode));
+                if (tmp < distance(nod)) {
+                    distance(nod) = tmp;
+                    pred(nod) = nextNode;
                 }
             }
         }
@@ -256,9 +245,10 @@ ivec Network::findShortestPath(int startnode, int endNode, vec &edgeWeight, bool
 
     if (printPaths == true) {printShortestPaths(startnode, endNode, distance, pred);}
 
-    printText("Shortest path found. Populating route",2,0);
+    //printText("Shortest path found. Populating route",2,0);
     cntr = 0;
-    int knod{},nod{endNode};
+    int knod{};
+    nod = endNode;
     ivec path = zeros<ivec>(nnod);
     if (nod != startnode) {
         path(cntr) = nod;
@@ -305,4 +295,43 @@ void Network::printShortestPaths(int startNode, int endNode, vec distance, ivec 
         } while (knod != startNode);
     }
 
+}
+
+
+ivec Network::findRedundant(vec &resistance)   {
+
+    printText("Finding redundant vessels");
+
+    // Finding shortest paths between inflowing and outflowing boundary nodes
+    int inodbc{},jnodbc{},found{},nod1{},nod2{};
+    ivec path;
+    ivec storePaths = zeros<ivec>(nseg);
+    uvec inflow = find(BCflow > 0.);
+    uvec outflow = find(BCflow < 0.);
+    progressBar.set_niter(nnodbc);
+
+    #pragma omp parallel for schedule(auto) default(none) shared(progressBar,storePaths,resistance,inflow,outflow) private(inodbc,jnodbc,path,nod1,nod2,found)
+    for (inodbc = 0; inodbc < nnodbc; inodbc++)   {
+        for (jnodbc = 0; jnodbc < nnodbc; jnodbc++)   {
+            path = findShortestPath(bcnod(inodbc), bcnod(jnodbc), resistance);
+            for (int iseg = 0; iseg < nseg; iseg++) {
+                found = 0;
+                nod1 = ista(iseg);
+                nod2 = iend(iseg);
+                for (int inod = 0; inod < (int) path.n_elem; inod++)    {
+                    if (nod1 == path(inod)) {found += 1;}
+                    else if (nod2 == path(inod))    {found += 1;}
+                    if (found == 2) {
+                        storePaths(iseg) = 1.;
+                        inod = (int) path.n_elem;
+                    }
+                }
+            }
+        }
+        #pragma omp critical
+            progressBar.update();
+    }
+
+    return storePaths;
+    
 }

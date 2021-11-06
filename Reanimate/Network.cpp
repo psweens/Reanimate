@@ -33,7 +33,10 @@ Network::Network() {
     beta = 1.e-4;
     xi = 1e-6; // kg/mm.s / xi -> cP (1e-3 Pa.s)
 
+    lthresh = 10.;
+
     consthd = 0.45;
+    nitmax = 100;
 
     kp = 0.1;
     ktau = 1.e-4;
@@ -45,6 +48,11 @@ Network::Network() {
     unknownBCs = false;
     silence = false;
 
+    progressBar.set_todo_char(" ");
+    progressBar.set_done_char("█");
+    progressBar.set_opening_bracket_char("{");
+    progressBar.set_closing_bracket_char("}");
+
     rLog = "Reanimate_Log.txt";
 
 }
@@ -52,7 +60,7 @@ Network::~Network() = default;
 
 
 void Network::loadNetwork(const string &filename, const bool directFromAmira)   {
-    
+
     int max=200;
     char bb[200];
 
@@ -69,7 +77,7 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
 
     printText(networkName, 3);
     printText("Importing network data");
-    
+
     fscanf(ifp, "%lf %lf %lf\n", &alx,&aly,&alz); fgets(bb,max,ifp);
     fscanf(ifp, "%lli %lli %lli\n", &mxx,&myy,&mzz); fgets(bb,max,ifp);
     fscanf(ifp, "%lf\n", &lb); fgets(bb,max,ifp);
@@ -78,7 +86,7 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
     fgets(bb,max,ifp);
 
     printText("Tissue Dimensions (x,y,z) = " + to_string(int(alx)) + " um x " + to_string(int(aly)) + " um x " + to_string(int(alz)) + " um", 1, 0);
-    
+
     // Number of segments in vessel network
     fscanf(ifp,"%i", &nseg); fgets(bb,max,ifp);
     fgets(bb,max,ifp);
@@ -116,12 +124,12 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
     fscanf(ifp,"%i", &nnod);
     fgets(bb,max,ifp);
     fgets(bb,max,ifp);
-    
+
     // Coordinates of nodes
     nodname = zeros<ivec>(nnod);
     cnode = zeros<mat>(3,nnod);
     nodpress = zeros<vec>(nnod);
-    
+
     num = detect_col(ifp);
     if (num == 4)   {
         for(int inod = 0; inod < nnod; inod++)  {
@@ -136,7 +144,7 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
     else    {
         printText("Network file -> Invalid Node Format",4);
     }
-    
+
     // Boundary nodes
     fscanf(ifp,"%i", &nnodbc);
     fgets(bb,max,ifp);
@@ -146,7 +154,7 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
     bctyp = zeros<ivec>(nnodbc);
     bcprfl = zeros<vec>(nnodbc);
     bchd = zeros<vec>(nnodbc);
-    
+
     nsol = detect_col(ifp);
     if (nsol == 4)   {
         for(int inodbc = 0; inodbc < nnodbc; inodbc++){
@@ -170,9 +178,9 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
         printText("Network file -> Invalid Boundary Node Format",4);
         if (nnodbc == 0)    {findBoundaryNodes();}
     }
-    
+
     fclose(ifp);
-    
+
     nodsegm += 1; // Armadillo indexing starts at zero
 
     setup_networkArrays();
@@ -226,8 +234,8 @@ void Network::subNetwork(ivec &index, bool graph, bool print) {
     ista = zeros<ivec>(nseg);
     iend = zeros<ivec>(nseg);
     indexSegmentConnectivity();
-    
-    
+
+
     // Update nodes types
     nodtyp.zeros();
     indexNodeConnectivity();
@@ -250,13 +258,13 @@ void Network::subNetwork(ivec &index, bool graph, bool print) {
             nnodbc += 1;
         }
     }
-    
+
     bcnodname = zeros<ivec>(nnodbc);
     bctyp = zeros<ivec>(nnodbc);
     bcprfl = zeros<vec>(nnodbc);
     bchd = zeros<vec>(nnodbc);
     BCgeo = zeros<ivec>(nnodbc);
-    
+
     int jnodbc = 0;
     int found{};
     for (int inod = 0; inod < nnod; inod++) {

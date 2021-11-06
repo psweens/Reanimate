@@ -25,8 +25,7 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
     }
     else {
         deadEnds = networkCopy.findDeadends();
-        //vesstyp = deadEnds;
-        printNetwork("network_DeadendsLabels.txt");
+        deadEnds.save(string(buildPath+"Network_DeadEnds.txt"), raw_ascii);
     }
     if (accu(deadEnds) > 0) {
         printText("Removing dead ends",2,0);
@@ -260,7 +259,7 @@ void Vasculature::computeConductance()   {
             }
         }
         else {visc = constvisc*xi;}
-        conductance(iseg) = M_PI*pow(tdiam,4)/(128*visc*lseg(iseg));
+        conductance(iseg) = M_PI*pow(tdiam,4)/(128.*visc*lseg(iseg));
         c(iseg) = 4*visc/(M_PI*pow(tdiam*0.5,3));
     }
 

@@ -9,6 +9,7 @@
 #include <string>
 #include <armadillo>
 #include <sys/resource.h>
+#include "progressBar.hpp"
 
 using namespace arma;
 using namespace std;
@@ -24,13 +25,14 @@ namespace reanimate {
 
         string networkName,networkPath,buildPath,loadPath,rLog;
         bool unknownBCs,phaseseparation,silence;
-        int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track{},nitmax{100},nvertex{},nedge{},npoint{},branch{};
-        double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{10.},tissDensity{},bloodDensity{},consthd{},constvisc{};
+        int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track{},nitmax{},nvertex{},nedge{},npoint{},branch{};
+        double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{},tissDensity{},bloodDensity{},consthd{},constvisc{};
         ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,flagTree,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt,edgePnts;
         vec diam,rseg,lseg,q,qq,vel,hd,bcprfl,bchd,nodpress,conductance,BCflow,BCpress,tau,segpress,elseg,ediam;
         uvec unknownnod_idx,bcpress_idx;
         imat segnodname,nodnod,nodseg,segpoints;
         mat cnode,bcp;
+        progressbar progressBar;
 
         virtual double evalTissPress(vec &x) {return 0.;}
         virtual double evalTissVel(vec &x) {return 0.;}
@@ -60,7 +62,7 @@ namespace reanimate {
         ivec breadthFirstSearch(int nod);
         ivec findShortestPath(int startnode, int endNode, vec &edgeWeight, bool printPaths=false);
         void printShortestPaths(int startNode, int endNode, vec distance, ivec pred);
-
+        ivec findRedundant(vec &resistance);
         void findArticulationPoints();
         ivec findDeadends();
         void removeNewBC(ivec storeBCnodname, bool print=false, bool graph=false);

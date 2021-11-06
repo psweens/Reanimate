@@ -12,7 +12,7 @@ link_libraries(-llapack)
 link_libraries(-lopenblas)
 link_libraries(-lsuperlu)
 
-add_executable(Reanimate_Update
+add_executable(Reanimate
         Reanimate/main.cpp
         Reanimate/Network.cpp
         Reanimate/Network.hpp
@@ -54,4 +54,6 @@ add_executable(Reanimate_Update
         Reanimate/Solute.hpp
         Reanimate/Examples/Example_Discrete_BloodFlow.cpp
         Reanimate/Examples/Example_Hybrid_BloodFlow.cpp
-        Reanimate/Examples/Examples.h)
+        Reanimate/Examples/Examples.h
+        Reanimate/Medulla.cpp
+        Reanimate/Misc/progressBar.hpp)

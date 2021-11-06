@@ -22,7 +22,7 @@ namespace reanimate {
         void computeSegpress();
         void computeConductance();
         void printSummary();
-        void printVisuals(bool amira=true, bool twoDim=true);
+        void printVisuals(bool amira=true, bool twoDim=true, bool logDistrib=true);
 
         Vasculature();
         ~Vasculature();

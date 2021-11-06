@@ -32,7 +32,7 @@ void Vasculature::printSummary() {
 
 }
 
-void Vasculature::printVisuals(bool amira, bool twoDim)    {
+void Vasculature::printVisuals(bool amira, bool twoDim, bool logDistrib)    {
 
     qq(find(qq < 1.e-4)).fill(1.e-4);
     tau(find(tau < 1.e-4)).fill(1.e-4);
@@ -51,8 +51,14 @@ void Vasculature::printVisuals(bool amira, bool twoDim)    {
     if (twoDim) {
         pictureNetwork("Network_Diameters.ps", diam);
         pictureNetwork("Network_BloodPressure.ps", segpress);
-        pictureNetwork("Network_BloodFlow_log.ps", log(qq));
-        pictureNetwork("Network_WSS_log.ps", log(tau));
+        if (logDistrib) {
+            pictureNetwork("Network_BloodFlow_log.ps", log(qq));
+            pictureNetwork("Network_WSS_log.ps", log(tau));
+        }
+        else {
+            pictureNetwork("Network_BloodFlow.ps", qq);
+            pictureNetwork("Network_WSS.ps", tau);
+        }
         pictureNetwork("Network_Haematocrit.ps", hd);
     }
 
