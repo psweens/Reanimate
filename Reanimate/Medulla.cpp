@@ -10,56 +10,6 @@ using namespace std;
 
 void Medulla()  {
 
-    /*    DiscreteContinuum oNetwork;
-    oNetwork.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
-    oNetwork.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
-    oNetwork.discreteNet.buildPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
-    oNetwork.discreteNet.loadPath = "/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
-    oNetwork.discreteNet.setBuildPath(true);
-    oNetwork.discreteNet.loadNetwork("SW1/SW1_1.txt");
-    oNetwork.discreteNet.setStackSize();
-    oNetwork.discreteNet.loadDeadEnds = true;
-
-    // Extract subnetwork
-    oNetwork.graph.generate(oNetwork.discreteNet, true);
-    int nod{};
-    int depth{3};
-    for (int inodbc = 0; inodbc < oNetwork.graph.getNnodbc(); inodbc++)   {
-        if (oNetwork.graph.bcnodname(inodbc) == 108)    {
-            nod = oNetwork.graph.bcnod(inodbc);
-            inodbc = oNetwork.graph.getNnodbc();
-        }
-    }
-    ivec order = oNetwork.graph.breadthFirstSearch(nod);
-    vec border = zeros<vec>(oNetwork.graph.getNseg());
-    for (int iseg = 0; iseg < oNetwork.graph.getNseg(); iseg++) {
-        border(iseg) = ceil(0.5*(order(oNetwork.graph.ista(iseg)) + order(oNetwork.graph.iend(iseg))));
-    }
-    ivec remove = zeros<ivec>(oNetwork.discreteNet.getNseg());
-    vec neworder = zeros<vec>(oNetwork.discreteNet.getNseg());
-    for (int iseg = 0; iseg < oNetwork.discreteNet.getNseg(); iseg++)   {
-        for (int jseg = 0; jseg < oNetwork.graph.getNseg(); jseg++)   {
-            if (oNetwork.discreteNet.edgeLabels(iseg) == oNetwork.graph.segname(jseg))  {
-                if (border(jseg) > depth) {remove(iseg) = 1;}
-                neworder(iseg) = border(jseg);
-                jseg = oNetwork.graph.getNseg();
-            }
-        }
-    }
-
-    remove(find(neworder > depth)).fill(1);
-    neworder = neworder(find(neworder <= depth));
-    oNetwork.discreteNet.subNetwork(remove);
-    oNetwork.discreteNet.pictureNetwork("NetworkOrder.ps", neworder);
-    oNetwork.discreteNet.printNetwork("SW_Depth4_Tortuous.txt");
-
-    remove = zeros<ivec>(oNetwork.graph.getNseg());
-    remove(find(border > depth)).fill(1);
-    border = border(find(border <= depth));
-    oNetwork.graph.subNetwork(remove, true);
-    oNetwork.graph.pictureNetwork("GraphOrder.ps", conv_to<vec>::from(border));
-    oNetwork.graph.printNetwork("SW_Depth4_Graph.txt");*/
-
     // Medulla network
     // Generate network from Amira file
 /*    Network medulla;

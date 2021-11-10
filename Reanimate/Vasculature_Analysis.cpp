@@ -12,7 +12,8 @@ void Vasculature::analyseVascularFlow()  {
     rheolParams();
 
     // Blood velocity
-    vel = qq * gamma / (M_PI*pow(0.5*diam*1e-3,2)); // mm/s
+    if (cuboidVessels)  {vel = qq * gamma / pow(diam*1.e-3,2);} // Average velocity - Need to update for arbitrary cuboidal widths
+    else {vel = qq * gamma / (M_PI*pow(0.5*diam*1e-3,2));} // mm/s
 
     // Reynolds number
     vec Re = zeros<vec>(nseg);

@@ -1,4 +1,5 @@
 #include "Network.hpp"
+#include <math.h>
 
 using namespace reanimate;
 
@@ -6,12 +7,31 @@ void Network::fullSolver()    {
 
     // Construct conductance matrix, M
     if (!phaseseparation)   {printText("Computing conductance matrix, M",2, 0);}
-    double tcond{};
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        tcond = conductance(iseg);
-        M(iseg,ista(iseg)) = tcond;
-        M(iseg,iend(iseg)) = -tcond;
+    double tcond{},sum{},bn{};
+    if (cuboidVessels)  {
+        double a{},b{};
+        // Let 'b' (z-axis) be vessel depth and 'a' (y-axis) width
+        for (int iseg = 0; iseg < nseg; iseg++) {
+            sum = 0.;
+            a = diam(iseg);
+            b = diam(iseg);
+            for (int n = 0; n < 1e2; n++)   {
+                bn = (2.*n - 1.) * M_PI / a;
+                sum += (1. / pow(2.*n - 1.,5)) * (cosh(bn * b) - 1.) / sinh(bn * b);
+            }
+            tcond = -(pow(a,3) / (lseg(iseg) * constvisc * xi)) * (b / 12. - 16 * a * sum / pow(M_PI,5));
+            M(iseg,ista(iseg)) = tcond;
+            M(iseg,iend(iseg)) = -tcond;
+        }
     }
+    else {
+        for (int iseg = 0; iseg < nseg; iseg++) {
+            tcond = conductance(iseg);
+            M(iseg,ista(iseg)) = tcond;
+            M(iseg,iend(iseg)) = -tcond;
+        }
+    }
+
 
     // Construct K matrix
     if (!phaseseparation)   {printText("Computing K matrix",2, 0);}

@@ -13,7 +13,9 @@ int main(int argc, char** argv) {
 
     omp_set_num_threads(48);
 
-    for (int i = 1; i <= 1; i++)    {
+    example_BranchingOrder();
+
+    /*for (int i = 1; i <= 1; i++)    {
 
         // Find shortest path
         Vasculature test;
@@ -23,21 +25,16 @@ int main(int argc, char** argv) {
         string netName = "LS3_" + to_string(i) + ".txt";
         test.loadNetwork(netName);
         test.setStackSize();
-        //test.loadDeadEnds = true;
+        test.loadDeadEnds = true;
 
-/*    for (int inodbc = 0; inodbc < test.getNnodbc(); inodbc++)   {
-        test.bcprfl(inodbc) = test.nodpress(test.bcnod(inodbc));
-        test.bctyp(inodbc) = 0;
-    }*/
-
-        test.bloodFlow(true);
-        test.printVisuals(false);
+        test.bloodFlow(true, true, true);
+        test.printVisuals(true);
 
         test.graph.generate(test, true);
 
         test.rheolParams();
         //test.hd.fill(test.consthd);
-        //test.computeConductance();
+        test.computeConductance();
         test.conductance = zeros<vec>(test.getNseg());
         for (int iseg = 0; iseg < test.getNseg(); iseg++) {
             test.conductance(iseg) = M_PI * pow(test.diam(iseg), 4) / (128. * test.lseg(iseg));
@@ -62,15 +59,17 @@ int main(int argc, char** argv) {
             }
         }
 
-        vec printPath = zeros<vec>(test.getNseg());
         ivec graphPaths = test.graph.findRedundant(tmp);
         graphPaths.save(test.buildPath + "LS3_"+to_string(i)+"_saveGraphRedundancy.txt", raw_ascii);
+
+        //ivec graphPaths = zeros<ivec>(test.graph.getNseg());
+        //graphPaths.load("/home/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/LS3_"+to_string(i)+"_saveGraphRedundancy.txt", raw_ascii);
 
         test.graph.pictureNetwork("ShortestPath.ps", conv_to<vec>::from(graphPaths));
 
         const char *headers[1] = {"Redundancy"};
         mat data = zeros<mat>(test.graph.getNseg(), 1);
-        data.col(0) = printPath;
+        data.col(0) = conv_to<vec>::from(graphPaths);
 
         string filename = "LS3_" + to_string(i) + "_graph_redundancy.am";
         test.graph.printAmira(filename, data,false, headers);
@@ -94,6 +93,6 @@ int main(int argc, char** argv) {
 
         fullRedundantPaths.save(test.buildPath + "LS3_"+to_string(i)+"_saveRedundancy.txt", raw_ascii);
 
-    }
+    }*/
 
 }

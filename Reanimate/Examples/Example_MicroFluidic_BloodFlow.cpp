@@ -8,7 +8,7 @@
 using namespace reanimate;
 using namespace std;
 
-void example_Discrete_BloodFlow() {
+void example_MicroFluidic_BloodFlow() {
 
     // Set number of threads for any multithreading
     omp_set_num_threads(48);
@@ -30,7 +30,8 @@ void example_Discrete_BloodFlow() {
     network.setStackSize();
 
     // Solve for blood flow w/ variable viscosity and phase separation
-    network.bloodFlow(true, true);
+    network.cuboidVessels = true;
+    network.bloodFlow(true, false);
 
     // Output 2D visuals (false -> true if Amira file needed)
     network.printVisuals(false);

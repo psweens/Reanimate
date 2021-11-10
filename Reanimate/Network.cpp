@@ -47,6 +47,7 @@ Network::Network() {
     phaseseparation = false;
     unknownBCs = false;
     silence = false;
+    cuboidVessels = false;
 
     progressBar.set_todo_char(" ");
     progressBar.set_done_char("█");

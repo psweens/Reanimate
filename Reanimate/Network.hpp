@@ -24,7 +24,7 @@ namespace reanimate {
     public:
 
         string networkName,networkPath,buildPath,loadPath,rLog;
-        bool unknownBCs,phaseseparation,silence;
+        bool unknownBCs,phaseseparation,silence,cuboidVessels;
         int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track{},nitmax{},nvertex{},nedge{},npoint{},branch{};
         double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{},tissDensity{},bloodDensity{},consthd{},constvisc{};
         ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,flagTree,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt,edgePnts;

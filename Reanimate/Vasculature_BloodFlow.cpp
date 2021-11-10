@@ -21,7 +21,7 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
 
     if (loadDeadEnds)   {
         printText("Reading dead ends");
-        deadEnds = vesstyp;
+        deadEnds.save(string(buildPath+"Network_DeadEnds.txt"), raw_ascii);
     }
     else {
         deadEnds = networkCopy.findDeadends();
