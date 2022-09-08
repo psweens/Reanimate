@@ -35,6 +35,14 @@ void Network::analyse_network(bool graph, bool print)   {
     BCgeo = zeros<ivec>(nnodbc);
     analyseBoundaryType();
 
+/*    // Network volume
+    double netVol = sum(lseg % pow(rseg, 2))*M_PI;
+
+    // Vascular density
+    double vascDens = 100*netVol/(alx*aly*alz);
+
+    cout<<"Vascular Density: "<<vascDens<<endl;*/
+
 }
 
 
@@ -42,6 +50,8 @@ void Network::indexSegmentConnectivity() {
 
     int seg{};
     bool found = false;
+    ista = zeros<ivec>(nseg);
+    iend = zeros<ivec>(nseg);
     #pragma omp parallel for schedule(auto) default(none) shared(nseg, nnod, segnodname, nodname, segname, ista, iend) private(seg, found)
     for (int iseg = 0; iseg < nseg; iseg++)	{
         //Search for nodes corresponding to this segment
@@ -74,6 +84,9 @@ void Network::indexNodeConnectivity()   {
     // 'nodseg' -> for each nodes, store the corresponding segment index
     // 'nodnod' -> for each node, store the nodal index of the opposite side of the segment
     int inod1{},inod2{};
+    nodtyp = zeros<ivec>(nnod);
+    nodnod = zeros<imat>(nodsegm,nnod);
+    nodseg = zeros<imat>(nodsegm,nnod);
     for (int iseg = 0; iseg < nseg; iseg++) {
         inod1 = (int) ista(iseg);
         inod2 = (int) iend(iseg);
@@ -161,13 +174,14 @@ void Network::edgeNetwork() {
     elseg = zeros<vec>(nseg);
     ediam = zeros<vec>(nseg);
 
+    int ntyp{};
     uvec bnod = find(nodtyp != 2); // Find index of boundary or bifurcating nodes
     ivec trackNode = -ones<ivec>(nnod);
     for (int inod = 0; inod < nnod; inod++) {
         if (nodtyp(inod) != 2)  {
             bool runme = true;
             if (runme)    {
-                int ntyp = (int) nodtyp(inod);
+                ntyp = (int) nodtyp(inod);
                 // Cycle through connections to node using dfs
                 for (int jnod = 0; jnod < ntyp; jnod++) {
                     if (trackNode(nodnod(jnod, inod)) == -1)    {

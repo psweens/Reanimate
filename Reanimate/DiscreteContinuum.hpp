@@ -20,6 +20,9 @@ namespace reanimate   {
         spatGraph graph;
         void runHybrid();
 
+        void setBuildPath(const string buildPath, bool deleteFiles=true) override;
+        void setLoadPath(const string loadPath) override;
+
         DiscreteContinuum();
         ~DiscreteContinuum();
 
@@ -28,7 +31,7 @@ namespace reanimate   {
         bool terminateNM{false};
         int nart{},ncap{},nven{},nnodD{},nnodB{},nnodT{},nIterLambda{};
         double qact{},qsum{},capFlow{},artIn{},venOut{},capPress{},capLseg{},artDiam{},capDiam{},venDiam{},optKappa{},optLambda{},optBeta{};
-        ivec sourceTyp,sourceBCtyp,sourceTree;
+        ivec sourceTyp,sourceBCtyp,sourceTree,sourceGeoTyp;
         uvec sourceIdx;
         vec qout_act,pout_act,Pa_Pv,qout,pout,continuumPress,r0,segpressPred,nodpressPred,qPred,Mpress_pred,sigmaFlow_pred,sigmaPress_pred,R2_flow,R2_press;
         mat rnod,Mnet,Mtiss,snode,NINV;
@@ -51,6 +54,11 @@ namespace reanimate   {
         void NewtRaph();
         void mapContinuum(Vasculature &network);
         void printDataAnalysis();
+
+
+    private:
+
+        bool NewtRaphExplosion{};
 
     };
 

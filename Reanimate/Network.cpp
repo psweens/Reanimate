@@ -7,7 +7,9 @@
 using namespace std;
 using namespace reanimate;
 
-void Network::setBuildPath(bool deleteFiles) {
+void Network::setBuildPath(const string path, bool deleteFiles) {
+
+    buildPath = path;
 
     printf("Setting build directory ...\n");
     DIR* dir = opendir(buildPath.c_str());
@@ -26,6 +28,21 @@ void Network::setBuildPath(bool deleteFiles) {
 
 }
 
+void Network::setLoadPath(const string path) {
+
+    loadPath = path;
+
+    printf("Setting build directory ...\n");
+    DIR* dir = opendir(loadPath.c_str());
+    if (!dir) {
+        printf("Directory does not exist. Creating folder ...\n");
+        system(("mkdir " + loadPath).c_str());
+    }
+
+    closedir(dir);
+
+}
+
 Network::Network() {
 
     gamma = 1./(1.e3*60); //  mm3/s / gamma -> nl/min
@@ -35,6 +52,8 @@ Network::Network() {
 
     lthresh = 10.;
 
+    // Constant visc
+    constvisc = 3.;
     consthd = 0.45;
     nitmax = 100;
 
@@ -60,7 +79,7 @@ Network::Network() {
 Network::~Network() = default;
 
 
-void Network::loadNetwork(const string &filename, const bool directFromAmira)   {
+void Network::loadNetwork(const string &filename, const bool cuboidVess, const bool directFromAmira)   {
 
     int max=200;
     char bb[200];
@@ -92,34 +111,8 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
     fscanf(ifp,"%i", &nseg); fgets(bb,max,ifp);
     fgets(bb,max,ifp);
 
-    // Segment properties: name type nodename(start), nodename(end), diameter, flow, hematocrit
-    segname = zeros<ivec>(nseg);
-    vesstyp = zeros<ivec>(nseg);
-    segnodname = zeros<imat>(2,nseg);
-    diam = zeros<vec>(nseg);
-    lseg = zeros<vec>(nseg);
-    q = zeros<vec>(nseg);
-    hd = zeros<vec>(nseg);
-
-    int num = detect_col(ifp);
-    if (num == 7)   {
-        for(int iseg = 0; iseg < nseg; iseg++){
-            fscanf(ifp, "%lli %lli %lli %lli %lf %lf %lf\n",
-                   &segname(iseg),&vesstyp(iseg),&segnodname(0,iseg),&segnodname(1,iseg),&diam(iseg),&q(iseg),&hd(iseg));
-        }
-        computeLseg = 1;
-    }
-    else if (num == 8)  {
-        for(int iseg = 0; iseg < nseg; iseg++){
-            fscanf(ifp, "%lli %lli %lli %lli %lf %lf %lf %lf\n",
-                   &segname(iseg),&vesstyp(iseg),&segnodname(0,iseg),&segnodname(1,iseg),&diam(iseg),&lseg(iseg),&q(iseg),&hd(iseg));
-        }
-    }
-    else    {
-        printText("Network File -> Invalid Segment Format",4);
-    }
-    qq = abs(q);
-
+    // Load segment data
+    loadSegments(ifp, cuboidVess);
 
     // Number of nodes in vessel network
     fscanf(ifp,"%i", &nnod);
@@ -131,7 +124,7 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
     cnode = zeros<mat>(3,nnod);
     nodpress = zeros<vec>(nnod);
 
-    num = detect_col(ifp);
+    int num = detect_col(ifp);
     if (num == 4)   {
         for(int inod = 0; inod < nnod; inod++)  {
             fscanf(ifp, "%lli %lf %lf %lf\n", &nodname(inod),&cnode(0,inod),&cnode(1,inod),&cnode(2,inod));
@@ -205,6 +198,52 @@ void Network::loadNetwork(const string &filename, const bool directFromAmira)   
 
 }
 
+void Network::loadSegments(FILE *ifp, const bool cuboidVess)    {
+
+    // Segment properties: name type nodename(start), nodename(end), diameter, flow, hematocrit
+    segname = zeros<ivec>(nseg);
+    vesstyp = zeros<ivec>(nseg);
+    segnodname = zeros<imat>(2,nseg);
+    diam = zeros<vec>(nseg);
+    lseg = zeros<vec>(nseg);
+    q = zeros<vec>(nseg);
+    hd = zeros<vec>(nseg);
+
+    int num = detect_col(ifp);
+    if (cuboidVess) {
+        cuboidVessels = true;
+        width = zeros<vec>(nseg);
+        height = zeros<vec>(nseg);
+        if (num == 8)   {
+            for(int iseg = 0; iseg < nseg; iseg++){
+                fscanf(ifp, "%lli %lli %lli %lli %lf %lf %lf %lf\n",
+                       &segname(iseg),&vesstyp(iseg),&segnodname(0,iseg),&segnodname(1,iseg),&width(iseg),&height(iseg),&q(iseg),&hd(iseg));
+                diam(iseg) = 0.5 * (width(iseg) + height(iseg));
+            }
+            computeLseg = 1;
+        }
+        else    {printText("Network File -> Invalid Segment Format",4);}
+    }
+    else {
+        if (num == 7)   {
+            for(int iseg = 0; iseg < nseg; iseg++){
+                fscanf(ifp, "%lli %lli %lli %lli %lf %lf %lf\n",
+                       &segname(iseg),&vesstyp(iseg),&segnodname(0,iseg),&segnodname(1,iseg),&diam(iseg),&q(iseg),&hd(iseg));
+            }
+            computeLseg = 1;
+        }
+        else if (num == 8)  {
+            for(int iseg = 0; iseg < nseg; iseg++){
+                fscanf(ifp, "%lli %lli %lli %lli %lf %lf %lf %lf\n",
+                       &segname(iseg),&vesstyp(iseg),&segnodname(0,iseg),&segnodname(1,iseg),&diam(iseg),&lseg(iseg),&q(iseg),&hd(iseg));
+            }
+        }
+        else    {printText("Network File -> Invalid Segment Format",4);}
+    }
+    qq = abs(q);
+
+}
+
 
 void Network::subNetwork(ivec &index, bool graph, bool print) {
 
@@ -230,12 +269,10 @@ void Network::subNetwork(ivec &index, bool graph, bool print) {
     index.shed_rows(idx);
     nseg = segname.n_elem;
 
-
     // Populate connectivity indices
     ista = zeros<ivec>(nseg);
     iend = zeros<ivec>(nseg);
     indexSegmentConnectivity();
-
 
     // Update nodes types
     nodtyp.zeros();
@@ -246,7 +283,6 @@ void Network::subNetwork(ivec &index, bool graph, bool print) {
     cnode.shed_cols(idx);
     if (nodpress.n_elem > 0)    {nodpress.shed_rows(idx);}
     nnod = nodname.n_elem;
-
 
     // Update boundary nodes
     ivec copyBCnodname = bcnodname;
@@ -281,7 +317,11 @@ void Network::subNetwork(ivec &index, bool graph, bool print) {
                 }
             }
             if (found == 0) {
-                bctyp(jnodbc) = -3;
+                if (nodpress(inod) > 0.)    {
+                    bctyp(jnodbc) = 0;
+                    bcprfl(jnodbc) = nodpress(inod);
+                }
+                else {bctyp(jnodbc) = -3;}
             }
             jnodbc += 1;
             found = 0;

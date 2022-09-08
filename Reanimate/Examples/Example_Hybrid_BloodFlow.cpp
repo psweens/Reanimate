@@ -12,20 +12,17 @@ using namespace std;
 void example_Hybrid_BloodFlow() {
 
     // Set number of threads for any multithreading
-    omp_set_num_threads(48);
+    //omp_set_num_threads(48);
 
     // Define discrete-continuum (hybrid) model
     DiscreteContinuum hybrid;
 
-    // Can define separate directories for hybrid / discrete solutions
-    hybrid.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
-    hybrid.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
-    hybrid.discreteNet.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
-    hybrid.discreteNet.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
+    // Define and set build / load directories
+    hybrid.setBuildPath("/Users/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/",true);
+    hybrid.setLoadPath("/Users/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/");
 
-    // Create build path (delete files if folder already exists)
-    hybrid.discreteNet.setBuildPath(true);
-    hybrid.discreteNet.loadNetwork("1Network.dat");
+    // Load network
+    hybrid.discreteNet.loadNetwork("cNetwork.txt");
 
     // Set stack size for recursive functions (large networks)
     hybrid.discreteNet.setStackSize();
@@ -33,21 +30,25 @@ void example_Hybrid_BloodFlow() {
     // Use below if deadends are given in 'vesstyp' column in network file
     hybrid.discreteNet.loadDeadEnds = false;
 
-    // Define vessel inlets / outlets (Mes. 1 example given)
-    imat inOutlets = zeros<imat>(2,2);
-    inOutlets(0,0) = 830;
+    // Define vessel inlets / outlets
+    imat inOutlets = zeros<imat>(4,2);
+    inOutlets(0,0) = 601;
     inOutlets(0,1) = 1;
-    inOutlets(1,0) = 825;
-    inOutlets(1,1) = 2;
+    inOutlets(1,0) = 598;
+    inOutlets(1,1) = 1;
+    inOutlets(2,0) = 595;
+    inOutlets(2,1) = 2;
+    inOutlets(3,0) = 576;
+    inOutlets(3,1) = 2;
 
     // Generate spatial graph for vessel classification algorithm
     hybrid.graph.generate(hybrid.discreteNet, true);
 
     // Run below if classifications are already assigned in 'vesstyp'
-    //hybrid.graph.findTree(inOutlets);
+    hybrid.graph.findTree(inOutlets);
 
     // Run below function if vessels haven't been classified -> run topology classification algorithm
-    hybrid.graph.analyseTopology(inOutlets, hybrid.discreteNet);
+    //hybrid.graph.analyseTopology(inOutlets, hybrid.discreteNet);
 
     // Assign geometries to boundary nodes (based on 'vesstyp')
     hybrid.discreteNet.analyseBoundaryType();
@@ -58,20 +59,21 @@ void example_Hybrid_BloodFlow() {
     hybrid.discreteNet.computeBoundaryFlow();
     hybrid.discreteNet.printVisuals(false);
 
-    // Define micro-cell build and load paths
-    hybrid.cell.buildPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/";
-    hybrid.cell.loadPath = "/Users/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/";
-    hybrid.cell.setBuildPath(false); // Create build directory / delete contents
-
-    hybrid.graph.findLengths();
-
     //  Set micro-cell vessel diameter distribution(s)
-    hybrid.cell.setEdgeDiamDistrib(hybrid.discreteNet.diam(find(hybrid.discreteNet.vesstyp == 2)));
-    hybrid.cell.setEdgeLengthDistrib(hybrid.discreteNet.elseg(find(hybrid.discreteNet.vesstyp == 2)));
+    uvec indices = find_unique(hybrid.discreteNet.edgeLabels);
+    ivec evesstyp = hybrid.discreteNet.vesstyp(indices);
+    vec ediam = hybrid.discreteNet.ediam(indices);
+    vec elseg = hybrid.discreteNet.elseg(indices);
+    ediam = ediam(find(evesstyp == 2));
+    elseg = elseg(find(evesstyp == 2));
+
+    hybrid.cell.setEdgeDiamDistrib(ediam);
+    hybrid.cell.setEdgeLengthDistrib(elseg);
+    hybrid.graph.findLengths();
     hybrid.cell.setEucLengthDistrib(hybrid.graph.lseg(find(hybrid.graph.vesstyp == 2)));
 
     // Compute micro-cell hydraulic conductivity
-    hybrid.cell.computeConductivity("hexCell2D");
+    hybrid.cell.computeConductivity("crossCell3D", 10);
 
     // Run discrete-continuum (hybrid) model
     hybrid.runHybrid();

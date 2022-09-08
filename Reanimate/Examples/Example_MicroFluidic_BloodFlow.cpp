@@ -16,24 +16,56 @@ void example_MicroFluidic_BloodFlow() {
     // Define vasculature
     Vasculature network;
 
-    // Set load and built paths
-    network.loadPath = "/Users/paul/Dropbox/Code/C++/Reanimate/Load_Data/";
-    network.buildPath = "/Users/paul/Dropbox/Code/C++/Reanimate/Build_Data/";
+    // Set load and build paths
+    network.setLoadPath("/Users/sweene01/Dropbox/Code/C++/Reanimate/Load_Data/");
+    network.setBuildPath("/Users/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/",true);
 
-    // Func. creates build path if non-existent (files deleted if folder exists)
-    network.setBuildPath(true);
+    // Load network file - 'cuboidVess=True' indicates network file with width/height columns
+    network.loadNetwork("Tube.txt", true);
 
-    // Load network file
-    network.loadNetwork("1Network.dat");
+    // Iterate through various blood viscosity values (cP)
+    vec viscRange = zeros<vec>(3);
+    viscRange(0) = 2.;
+    viscRange(1) = 3.;
+    viscRange(2) = 4.;
+    for (int i = 0; i < (int) viscRange.n_elem; i++)    {
 
-    // Set stack size - used for functions w/ recursive loops (large networks)
-    network.setStackSize();
+        // Create output path for each value
+        network.setBuildPath("/Users/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/Visc_"+to_string(i)+"/",true);
 
-    // Solve for blood flow w/ variable viscosity and phase separation
-    network.cuboidVessels = true;
-    network.bloodFlow(true, false);
+        // Set blood viscosity value
+        network.constvisc = viscRange(i);
 
-    // Output 2D visuals (false -> true if Amira file needed)
-    network.printVisuals(false);
+        // Solve for blood flow w/ variable viscosity and phase separation
+        network.bloodFlow(true, false);
+
+        // Output 2D visuals
+        network.printVisuals(false);
+    }
+
+    // Reset blood viscosity to default value
+    network.constvisc = 3.;
+
+    // Iterate through various inflow conditions (nl/min - can set pressures instead)
+    vec inflowRange = zeros<vec>(3);
+    inflowRange(0) = 1.;
+    inflowRange(1) = 10.;
+    inflowRange(2) = 100.;
+    network.bctyp(0) = 1.; // Setting inflow boundary node to flow condition (0 value = pressure) - index 0 is inflow node
+    for (int i = 0; i < (int) inflowRange.n_elem; i++)  {
+
+        // Create output path for each value
+        network.setBuildPath("/Users/sweene01/Dropbox/Code/C++/Reanimate/Build_Data/Inflow_"+to_string(i)+"/",true);
+
+        // Set inflow value
+        network.bcprfl(0) = inflowRange(i);
+
+        // Solve for blood flow w/ variable viscosity and phase separation
+        network.bloodFlow(true, false);
+
+        // Output 2D visuals
+        network.printVisuals(false);
+
+    }
 
 }

@@ -11,7 +11,7 @@ void DiscreteContinuum::analyseBranches()  {
     printText("Analysing branching structures");
 
     // Store mean capillary data
-    capPress = mean(unique(discreteNet.segpress(find(discreteNet.vesstyp == 2))));
+    capPress = mean(discreteNet.segpress(find(discreteNet.vesstyp == 2)));
     capLseg = mean(discreteNet.elseg(find(discreteNet.vesstyp == 2)));
     capDiam = mean(discreteNet.ediam(find(discreteNet.vesstyp == 2)));
     artDiam = min(discreteNet.ediam(find(discreteNet.vesstyp == 1)));
@@ -27,6 +27,10 @@ void DiscreteContinuum::analyseBranches()  {
 
     // Plot discrete network
     discreteNet.pictureNetwork("Hybrid_BranchingNetwork.ps",conv_to<vec>::from(discreteNet.vesstyp));
+    const char *aheaders[] = {"Class"};
+    mat data2 = zeros<mat>(discreteNet.getNseg(), 1);
+    data2.col(0) = conv_to<vec>::from(discreteNet.vesstyp);
+    discreteNet.printAmira("Hybrid_BranchingVessels.am", data2, true, aheaders);
 
     // Setup arrays
     setup_hybridArrays();
@@ -79,6 +83,8 @@ void DiscreteContinuum::addDummies()    {
 
     printText("Adding dummy segments");
 
+    double meandiam = mean(discreteNet.diam);
+
     int jnod = discreteNet.getNnod();
     int jseg = discreteNet.getNseg();
     for (int inod = 0; inod < (int) discreteNet.getNnod(); inod++) {
@@ -120,7 +126,7 @@ void DiscreteContinuum::addDummies()    {
                     discreteNet.diam.resize(jseg+1);
                     if (discreteNet.vesstyp(iseg) == 1) {discreteNet.diam(jseg) = artDiam;}
                     else if (discreteNet.vesstyp(iseg) == 3)    {discreteNet.diam(jseg) = venDiam;}
-                    discreteNet.diam(jseg) = min(unique(discreteNet.diam(find(discreteNet.flagTree == discreteNet.flagTree(iseg)))));
+                    //discreteNet.diam(jseg) = mean(unique(discreteNet.diam(find(discreteNet.flagTree == discreteNet.flagTree(iseg)))));
                     //discreteNet.diam(jseg) = capDiam;
                     discreteNet.rseg.resize(jseg+1);
                     discreteNet.rseg(jseg) = 0.5 * discreteNet.diam(jseg);
@@ -130,7 +136,7 @@ void DiscreteContinuum::addDummies()    {
                     discreteNet.qq.resize(jseg+1);
                     discreteNet.qq(jseg) = discreteNet.qq(iseg);
                     discreteNet.hd.resize(jseg+1);
-                    discreteNet.hd(jseg) = 0.;//dummyhd;
+                    discreteNet.hd(jseg) = dummyhd;
                     discreteNet.flagTree.resize(jseg+1);
                     discreteNet.flagTree(jseg) = discreteNet.flagTree(iseg);
                     jseg += 1;
@@ -215,16 +221,17 @@ void DiscreteContinuum::packSpheres(int idx, bool repack)   {
     if (repack) {store = r0(idx);}
 
     mat tmp = rnod(find(rnod > 0.));
-    r0.fill(tmp.min());
-/*    vec store;
+    //r0.fill(tmp.min());
+    //vec store;
     for (int i = 0; i < nnodT; i++) {
-        store = rnod.col(i);
-        store = store(find(store > 0.));
+        //store = rnod.col(i);
+        //store = store(find(store > 0.));
         //r0(i) = 0.5*store.min();
-        //r0(i) = discreteNet.nodpress(sourceIdx(i)) * 1.e-6;
-    }*/
-    vec scale = abs(Pa_Pv - capPress);
-    r0 = r0 % (1./scale) * 1.e-6;
+        //r0(i) = discreteNet.nodpress(sourceIdx(i));
+    }
+    //vec scale = abs(Pa_Pv - capPress);
+    //r0 = r0 % (1./scale) * 1.e-6;
+    //r0.fill(1.e-8);
 
     if (repack) {r0(idx) = store;}
 

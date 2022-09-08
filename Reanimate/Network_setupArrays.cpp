@@ -11,8 +11,9 @@ void Network::setup_networkArrays() {
     nk = zeros<ivec>(nnod);
 
     nodtyp = zeros<ivec>(nnod);
-    bcnod = zeros<ivec>(nnodbc);
     articPnt = zeros<ivec>(nnod);
+
+    bcnod = zeros<uvec>(nnodbc);
 
     nodnod = zeros<imat>(nodsegm,nnod);
     nodseg = zeros<imat>(nodsegm,nnod);
@@ -104,13 +105,15 @@ void Network::setup_estimationArrays()  {
     if (accu(bchd) == 0.)   {hd.fill(consthd);}
 
     // Assign target pressure
-    targPress = 31.;
-    //targPress = mean(bcprfl(find(bctyp == 0))); // Set target pressure as the mean of the assign boundary pressure conditions
+    //targPress = 31.;
+    //double meanart = mean(bcprfl(find(bctyp == 0 && BCgeo == 1)));
+    //double meanven = mean(bcprfl(find(bctyp == 0 && BCgeo == 3)));
+    targPress = mean(bcprfl(find(bctyp == 0))); // Set target pressure as the mean of the assign boundary pressure conditions
     printNum("Target Pressure = ",targPress,"mmHg");
     p0.fill(targPress * alpha);
 
     // Target shear stress - intially set with random directions unless network flow is known
-    targStress = 5.;
+    targStress = 15.;
     printNum("Target Wall Shear Stress = ",targStress,"dyn/cm2");
     targStress *= beta;
     int ran{};

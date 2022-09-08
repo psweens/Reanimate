@@ -12,29 +12,50 @@ MicroCell::~MicroCell() = default;
 
 void MicroCell::loadMicroCell() {}
 
-void MicroCell::setup_microCellArrays()  {
+void MicroCell::setup_microCellArrays(bool tessellate)  {
 
     nodsegm = 10;
     computeLseg = 1;
 
-    setup_networkArrays();
-
-    segname = zeros<ivec>(nseg);
-    nodname = zeros<ivec>(nnod);
+    vesstyp = zeros<ivec>(nseg);
     diam = zeros<vec>(nseg);
+    rseg = zeros<vec>(nseg);
     lseg = zeros<vec>(nseg);
     q = zeros<vec>(nseg);
     hd = ones<vec>(nseg) * consthd;
     nodpress = zeros<vec>(nnod);
+    vessOrient = zeros<vec>(nseg);
 
-    cnode = zeros<mat>(3,nnod);
     cellSegpress = zeros<mat>(3,nseg);
+
+    nodout = zeros<ivec>(nnod);
+    nodrank = zeros<ivec>(nnod);
+    nk = zeros<ivec>(nnod);
+
+    bcnod = zeros<uvec>(nnodbc);
+    Bin = zeros<ivec>(nnodbc);
+    Bout = zeros<ivec>(nnodbc);
+    bcPairs = zeros<ivec>(nnodbc);
+
+    if (!tessellate)    {
+        segname = zeros<ivec>(nseg);
+        segnodname = zeros<imat>(2,nseg);
+        ista = zeros<ivec>(nseg);
+        iend = zeros<ivec>(nseg);
+        nodname = zeros<ivec>(nnod);
+        cnode = zeros<mat>(3,nnod);
+        nodtyp = zeros<ivec>(nnod);
+        nodnod = zeros<imat>(nodsegm,nnod);
+        nodseg = zeros<imat>(nodsegm,nnod);
+    }
 
 }
 
 
 void MicroCell::setup_mcFlowArrays() {
 
+    tissForce = zeros<vec>(3);
+    unitCL = zeros<mat>(nseg, 3);
     conductance = zeros<vec>(nseg);
     c = zeros<vec>(nseg);
 
@@ -42,16 +63,76 @@ void MicroCell::setup_mcFlowArrays() {
     cC = zeros<mat>(int(nnodbc/2.),nnod);
     cE = zeros<mat>(int(nnodbc/2.),nseg);
     cF = zeros<mat>(nseg,nnod);
-    conductivity = zeros<mat>(3,3);
+    if (cell2D) {conductivity = zeros<mat>(2,2);}
+    else {conductivity = zeros<mat>(3,3);}
+
+
+    // Construct B matrix
+    uvec idx = find(nodtyp > 1);
+    int Innod = (int) idx.n_elem;
+    int nod{};
+    cB = zeros<mat>(Innod,nseg);
+    for (int inod = 0; inod < Innod; inod++)    {
+        nod = (int) idx(inod);
+        for (int iseg = 0; iseg < nseg; iseg++) {
+            if (nod == ista(iseg)) {cB(inod,iseg) = -1.;}
+            else if (nod == iend(iseg))    {cB(inod,iseg) = 1.;}
+        }
+    }
+
+
+    // Construct C matrix
+    idx = find(Bin == 1);
+    for (int inodbc = 0; inodbc < (int) idx.n_elem; inodbc++) {
+        nod = idx(inodbc);
+        cC(inodbc,bcnod(nod)) = 1;
+        for (int jnodbc = 0; jnodbc < nnodbc; jnodbc++) {
+            if (bcPairs(nod) == bcPairs(jnodbc) && nod != jnodbc)    {
+                cC(inodbc,bcnod(jnodbc)) = -1;
+                jnodbc = nnodbc;
+            }
+        }
+    }
+
+
+    // Construct E matrix
+    for (int inodbc = 0; inodbc < (int) idx.n_elem; inodbc++) {
+        nod = idx(inodbc);
+        for (int iseg = 0; iseg < nseg; iseg++)   {
+            if (bcnod(nod) == ista(iseg) || bcnod(nod) == iend(iseg)) {
+                cE(inodbc,iseg) = 1;
+                iseg = nseg;
+            }
+        }
+        for (int jnodbc = 0; jnodbc < nnodbc; jnodbc++) {
+            if (bcPairs(nod) == bcPairs(jnodbc) && nod != jnodbc)    {
+                for (int iseg = 0; iseg < nseg; iseg++)   {
+                    if (bcnod(jnodbc) == ista(iseg) || bcnod(jnodbc) == iend(iseg)) {
+                        cE(inodbc,iseg) = -1;
+                        iseg = nseg;
+                        jnodbc = nnodbc;
+                    }
+                }
+            }
+        }
+    }
+
+
+    // Construct F matrix
+    for (int iseg = 0; iseg < nseg; iseg++)   {
+        cF(iseg,ista(iseg)) = 1;
+        cF(iseg,iend(iseg)) = 1;
+    }
 
 }
 
 void MicroCell::analyseMicroCell()  {
 
     // (microns)
+    findBoundingBox();
 
     // Network volume
-    netVol = sum(lseg % (diam % diam))*M_PI/4;
+    netVol = sum(lseg % pow(rseg,2))*M_PI;
 
     // Vascular density
     vascDens = 100*netVol/(alx*aly*alz);
@@ -77,7 +158,7 @@ void MicroCell::printCellAnalysis(string filename) {
     filename = buildPath + filename;
 
     ofp = fopen(filename.c_str(),"w");
-    fprintf(ofp,"Example statistic of micro-cell");
+    fprintf(ofp,"Example statistics of micro-cell\n");
     fprintf(ofp,"Network Dimensions (um): %.1f x %.1f x %.1f\n",alx,aly,alz);
     fprintf(ofp,"Vascular Density = %.3f %%\n",vascDens);
     fprintf(ofp,"Vascular Length Density = %.3f mm^-2\n",lsegDens);

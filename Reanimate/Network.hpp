@@ -27,9 +27,9 @@ namespace reanimate {
         bool unknownBCs,phaseseparation,silence,cuboidVessels;
         int mxx{},myy{},mzz{},nodsegm{},nsol{},nnodfl{},track{},nitmax{},nvertex{},nedge{},npoint{},branch{};
         double alx{},aly{},alz{},lb{},maxl{},targPress{},targStress{},tissperfusion{},inflow{},lthresh{},tissDensity{},bloodDensity{},consthd{},constvisc{};
-        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,bcnod,BCgeo,noflow,edgeLabels,flagTree,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt,edgePnts;
-        vec diam,rseg,lseg,q,qq,vel,hd,bcprfl,bchd,nodpress,conductance,BCflow,BCpress,tau,segpress,elseg,ediam;
-        uvec unknownnod_idx,bcpress_idx;
+        ivec ista,iend,segname,vesstyp,nodname,bcnodname,bctyp,nodtyp,BCgeo,noflow,edgeLabels,flagTree,nodout,nodrank,nk,flag,deadends,subGraphs,loops,sgraphTag,ngraphTag,deadEnds,articPnt,edgePnts;
+        vec diam,rseg,lseg,q,qq,vel,hd,bcprfl,bchd,nodpress,conductance,BCflow,BCpress,tau,segpress,elseg,ediam,width,height;
+        uvec bcnod,unknownnod_idx,bcpress_idx;
         imat segnodname,nodnod,nodseg,segpoints;
         mat cnode,bcp;
         progressbar progressBar;
@@ -37,8 +37,10 @@ namespace reanimate {
         virtual double evalTissPress(vec &x) {return 0.;}
         virtual double evalTissVel(vec &x) {return 0.;}
 
-        void setBuildPath(bool deleteFiles=true);
-        void loadNetwork(const string &filename, const bool directFromAmira=false);
+        virtual void setBuildPath(const string buildPath, bool deleteFiles=true);
+        virtual void setLoadPath(const string loadPath);
+
+        void loadNetwork(const string &filename, const bool cuboidVess=false, const bool directFromAmira=false);
         void analyse_network(bool graph = false, bool print = true);
         void indexSegmentConnectivity();
         void indexNodeConnectivity();
@@ -57,7 +59,7 @@ namespace reanimate {
         void processAmira(const bool &stubs);
         void dfsBasic(int v, int tag, ivec &track, bool nodeCondition=false, int type=2);
         void doubleDfs(int v, int tag, double val, ivec &track, vec &param, string cond="GT");
-        void dfsBranch(int v, int tag, ivec &track, int maxBranch=10);
+        void dfsBranch(int v, int tag, ivec &track, int maxBranch=10, double minDiam=0.);
         void dfsArtic(int v, int p=-1);
         ivec breadthFirstSearch(int nod);
         ivec findShortestPath(int startnode, int endNode, vec &edgeWeight, bool printPaths=false);
@@ -108,7 +110,7 @@ namespace reanimate {
         void printReducedAmira(const string &filename);
         void printAmira(const string &filename, const mat &extraData=zeros<mat>(0,0), bool smooth=true, const char *headers[]={});
         void printNamira(const string &filename, const string &networkname);
-        void plotContour(const string filename, Network &graph, double maxval, double minval, bool vector=false, bool overlay=true, const int xgrid=1e2, const int ygrid=1e2, const int NL=10);
+        void plotContour(const string filename, Network &graph, double maxval=0., double minval=0., bool vector=false, bool overlay=true, const int xgrid=1e2, const int ygrid=1e2, const int NL=10);
         void shadeContour(FILE *ofp, const int &m, const int &n, double &scalefac, int &nl, const double pint, const double &xmin, const double &xmax, const double &ymin, const double &ymax, const vec &cl, const mat &zv);
 
         Network(); // Constructor
@@ -141,9 +143,12 @@ namespace reanimate {
 
         double pointAverage(const int &pnt, const ivec &pntIdx, const vec &param);
 
+        void loadSegments(FILE *ifp, const bool cuboidVess=false);
+
     private:
 
         void findBoundaryNodes();
+        void cuboidWSS();
         const char* FindAndJump(const char* buffer, const char* SearchString);
 
     };

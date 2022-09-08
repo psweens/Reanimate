@@ -35,7 +35,7 @@ void Vasculature::cortexBoundaryPress() {
                 bcprfl(inodbc) = -1.e-4 * pow(diam(seg), 3) + 0.0186 * pow(diam(seg),2) - 1.0616 * diam(seg) + 35.04;
                 bctyp(inodbc) = 0;
             }
-            cout<<bcnodname(inodbc)<<"\t"<<bcprfl(inodbc)<<"\t"<<diam(seg)<<endl;
+            cout<<bcnodname(inodbc)<<"\t"<<bcprfl(inodbc)<<"\t"<<diam(seg)<<"\t"<<BCgeo(inodbc)<<endl;
         }
     }
 

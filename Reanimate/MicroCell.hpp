@@ -20,8 +20,8 @@ namespace reanimate {
     public:
 
         bool cell2D;
-        double kappa{},rotationAngle{},netVol{},vascDens{},lsegDens{},surfDens{},surfVolRatio{},R{},aniScaleY{1.},aniScaleZ{1.};
-        vec diamDistrib, lengthDistrib, eucLengths;
+        double omega{},kappa{},rotationAngle{},netVol{},vascDens{},lsegDens{},surfDens{},surfVolRatio{},R{},aniScaleY{1.},aniScaleZ{1.};
+        vec diamDistrib, lengthDistrib, eucLengths, gridSpacing;
         mat conductivity,cellSegpress;
         void hexCell2D();
         void crossCell2D();
@@ -42,11 +42,14 @@ namespace reanimate {
     private:
 
         ivec Bin, Bout, bcPairs;
-        mat cA,cB,cC,cE,cF;
+        vec vessOrient,tissForce;
+        mat cA,cB,cC,cE,cF,BA,EA,unitCL;
 
-        void setup_microCellArrays();
+        void setup_microCellArrays(bool tessellate=false);
         void setup_mcFlowArrays();
         void loadMicroCell();
+        void findBCpairs();
+        void assignGeometry();
         void analyseMicroCell();
         void printCellAnalysis(string filename);
 

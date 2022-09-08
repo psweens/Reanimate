@@ -12,9 +12,8 @@ using namespace reanimate;
 void example_BranchingOrder()    {
 
     Vasculature vessNet;
-    vessNet.buildPath = "/Users/paul/Dropbox/Code/C++/Reanimate/Build_Data/";
-    vessNet.loadPath = "/Users/paul/Dropbox/Code/C++/Reanimate/Load_Data/";
-    vessNet.setBuildPath(true);
+    vessNet.setLoadPath("/Users/paul/Dropbox/Code/C++/Reanimate/Load_Data/");
+    vessNet.setBuildPath("/Users/paul/Dropbox/Code/C++/Reanimate/Build_Data/", true);
     vessNet.loadNetwork("LS3/LS3_1.txt");
     vessNet.setStackSize();
     vessNet.loadDeadEnds = true;

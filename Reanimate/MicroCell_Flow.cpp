@@ -14,20 +14,44 @@ void MicroCell::computeConductivity(const string cellType, const int iterations)
     cell2D = false;
 
     if (cellType == "hexCell2D")    {printText("Applying 2D hexagonal cell");}
-    else if (cellType == "crossCell3D") {printText("Applying 3D cross cell");}
+    else if (cellType == "crossCell3D") {
+        printText("Generating 3D cross cell");
+        crossCell3D();
+    }
     else if (cellType == "load")    {printText("Loading custom cell");}
 
+    setup_mcFlowArrays();
+
+    printText("Computing hydraulic conductivity");
     mat normConductivity = zeros<mat>(3, 3);
+    progressBar.reset();
+    progressBar.set_niter(iterations);
     for (int i = 0; i < iterations; i++)   {
-        if (cellType == "hexCell2D")    {hexCell2D();}
-        else if (cellType == "crossCell2D") {crossCell2D();}
-        else if (cellType == "crossCell3D") {crossCell3D();}
-        else if (cellType == "load")    {loadMicroCell();}
+        vascDens = 1.e2;
+        crossCell3D();
+        setup_mcFlowArrays();
+        assignGeometry();
+        while (vascDens > 3.25 || vascDens < 2.75)  {
+            if (cellType == "hexCell2D")    {hexCell2D();}
+            else if (cellType == "crossCell2D") {crossCell2D();}
+            else if (cellType == "crossCell3D") {assignGeometry();}
+            else if (cellType == "load")    {loadMicroCell();}
+        }
         flowMicroCell();
         normConductivity += conductivity;
+        progressBar.update();
     }
+    cout<<endl;
     conductivity = normConductivity / double(iterations);
     conductivity.print();
+
+    const char *headers[] = {"Diam", "P1", "P2", "P3"};
+    mat data = zeros<mat>(nseg, 4);
+    data.col(0) = diam;
+    data.col(1) = cellSegpress.row(0).t();
+    data.col(2) = cellSegpress.row(1).t();
+    data.col(3) = cellSegpress.row(2).t();
+    printAmira("MicroCell_amiraBloodPress.am", data, false, headers);
 
     // mm3.s/kg
     kappa = conductivity(0,0);
@@ -47,13 +71,8 @@ void MicroCell::computeConductivity(const string cellType, const int iterations)
 
 void MicroCell::flowMicroCell()    {
 
-    // Millimetre scaling
     lseg *= 1e-3;
     diam *= 1e-3;
-
-    // Allocate arrays
-    setup_mcFlowArrays();
-
 
     // Construct A matrix
     for (int iseg = 0; iseg < nseg; iseg++) {
@@ -63,117 +82,47 @@ void MicroCell::flowMicroCell()    {
         }
     }
 
-
-    // Construct B matrix
-    uvec idx = find(nodtyp != 1);
-    int Innod = (int) idx.n_elem;
-    cB = zeros<mat>(Innod,nseg);
-    for (int inod = 0; inod < Innod; inod++)    {
-        for (int iseg = 0; iseg < nseg; iseg++) {
-            if ((int) idx(inod) == ista(iseg)) {cB(inod,iseg) = -1.;}
-            else if ((int) idx(inod) == iend(iseg))    {cB(inod,iseg) = 1.;}
-        }
-    }
-
-
-    // Construct C matrix
-    idx = find(Bin == 1);
-    for (int inodbc = 0; inodbc < (int) idx.n_elem; inodbc++) {
-        int nod = idx(inodbc);
-        cC(inodbc,bcnod(nod)) = 1;
-        for (int jnodbc = 0; jnodbc < nnodbc; jnodbc++) {
-            if (bcPairs(nod) == bcPairs(jnodbc) && nod != jnodbc)    {cC(inodbc,bcnod(jnodbc)) = -1;}
-        }
-    }
-
-
-    // Construct E matrix
-    for (int inodbc = 0; inodbc < (int) idx.n_elem; inodbc++) {
-        int nod = idx(inodbc);
-        for (int iseg = 0; iseg < nseg; iseg++)   {
-            if (bcnod(nod) == ista(iseg) || bcnod(nod) == iend(iseg)) {cE(inodbc,iseg) = 1;}
-        }
-        for (int jnodbc = 0; jnodbc < nnodbc; jnodbc++) {
-            if (bcPairs(nod) == bcPairs(jnodbc) && nod != jnodbc)    {
-                for (int iseg = 0; iseg < nseg; iseg++)   {
-                    if (bcnod(jnodbc) == ista(iseg) || bcnod(jnodbc) == iend(iseg)) {cE(inodbc,iseg) = -1;}
-                }
-            }
-        }
-
-    }
-
-
-    // Construct F matrix
-    for (int iseg = 0; iseg < nseg; iseg++)   {
-        cF(iseg,ista(iseg)) = 1;
-        cF(iseg,iend(iseg)) = 1;
-    }
-
-
-    // Define conductance
+    // Define vessel conductance
     computeConductance();
     conductance = conductance % lseg; // Modified conductance
 
     // Conservation of internal cell flux
-    mat BA = cB * (conductance % cA.each_col());
-
+    BA = cB * (conductance % cA.each_col());
 
     // Conservation of boundary cell flux
-    mat EA = cE * (conductance % cA.each_col());
-
+    EA = cE * (conductance % cA.each_col());
 
     // Volume pressure average
-    double omega = alx*aly*alz*1e-9;
+    omega = alx*aly*alz * 1e-9; // mm3 scaling
     cF = cF.each_col() % ((M_PI/(omega*8)) * (lseg % pow(diam,2)));
-
-    // Flag vessels aligned with axes
-    ivec flag = zeros<ivec>(nseg);
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        if (cnode(1,ista(iseg)) == cnode(1,iend(iseg)) && cnode(2,ista(iseg)) == cnode(2,iend(iseg))) {
-            flag(iseg) = 1; // Parallel to x-axis
-        }
-        else if (cnode(0,ista(iseg)) == cnode(0,iend(iseg)) && cnode(2,ista(iseg)) == cnode(2,iend(iseg)))   {
-            flag(iseg) = 2; // Parallel to y-axis
-        }
-        else if (cnode(0,ista(iseg)) == cnode(0,iend(iseg)) && cnode(1,ista(iseg)) == cnode(1,iend(iseg)))   {
-            flag(iseg) = 3; // Parallel to z-axis
-        }
-        else {
-            flag(iseg) = 4; // Diagonal vessels
-        }
-    }
-
 
     int dim{};
     if (cell2D) {dim = 2;}
     else {dim = 3;}
     conductivity.zeros();
+    vec nods1, nods2, v1, v2, v3, v4;
+    // Conservation of boundary pressures
+    v2 = zeros<vec>(int(nnodbc/2.));
+    // Volume pressure average
+    v4 = zeros<vec>(nseg);
+    for (int iseg = 0; iseg < nseg; iseg++) {
+        nods1 = cnode.col(ista(iseg));
+        nods2 = cnode.col(iend(iseg));
+        unitCL.row(iseg) = ((nods1-nods2) / eucDistance(nods1,nods2)).t();
+    }
+    vec flow = zeros<vec>(nseg);
     for (int i = 0; i < dim; i++) {
 
-        vec tissForce = zeros<vec>(3);
-        tissForce(i) = 1;
+        tissForce.zeros();
+        tissForce(i) = 1.;
 
-        vec nod1, nod2;
-        mat unitCL = zeros<mat>(nseg, 3);
-        for (int iseg = 0; iseg < nseg; iseg++) {
-            nod1 = cnode.col(ista(iseg));
-            nod2 = cnode.col(iend(iseg));
-            unitCL.row(iseg) = (abs(nod1-nod2) / eucDistance(nod1,nod2)).t();
-        }
         vec forcing = unitCL * tissForce;
 
         // Conservation of internal cell flux
-        vec v1 = -cB * (conductance % forcing);
+        v1 = cB * (conductance % forcing);
 
         // Conservation of boundary flux
-        vec v3 = -cE * (conductance % forcing);
-
-        // Conservation of boundary pressures
-        vec v2 = zeros<vec>(int(nnodbc/2.));
-
-        // Volume pressure average
-        vec v4 = zeros<vec>(nseg);
+        v3 = cE * (conductance % forcing);
 
         mat matrix = join_cols(join_cols(join_cols(BA,cC),EA),cF);
         vec vector = join_cols(join_cols(join_cols(v1,v2),v3),v4);
@@ -185,11 +134,19 @@ void MicroCell::flowMicroCell()    {
         }
 
         // Conductivity - mm3.s/kg
-
         vec p_grad = cA*nodpress;
         for (int iseg = 0; iseg < nseg; iseg++) {
+            flow(iseg) = conductance(iseg) * (p_grad(iseg) - forcing(iseg));
             conductivity.col(i) -= (conductance(iseg) * lseg(iseg) / omega) * (p_grad(iseg) - forcing(iseg)) * unitCL.row(iseg).t();
         }
+
+        // Check conservation conditions
+/*        vec checkB = cB*flow;
+        vec checkC = cC * nodpress;
+        cout<<"checkB"<<endl;
+        cout<<checkB<<endl;
+        cout<<"checkC"<<endl;
+        cout<<checkC<<endl;*/
 
 
         cellSegpress.row(i) *= 1e3; // mm to um

@@ -30,7 +30,7 @@ void spatGraph::setup_graphArrays() {
     nodtyp = zeros<ivec>(nnod);
     articPnt = zeros<ivec>(nnod);
 
-    bcnod = zeros<ivec>(nnodbc);
+    bcnod = zeros<uvec>(nnodbc);
 
     nodnod = zeros<imat>(nodsegm,nnod);
     nodseg = zeros<imat>(nodsegm,nnod);
@@ -61,14 +61,16 @@ void spatGraph::generate(Network &network, bool print)  {
 
 
     // Finding edge vertices
+    int tname{};
     uvec idx;
     ivec flagLoop = zeros<ivec>(nseg);
     segnodname = zeros<imat>(2,nseg);
     ngraphTag = zeros<ivec>(nnod);
     for (int jseg = 0; jseg < nseg; jseg++) {
         nodtyp.zeros();
+        tname = segname(jseg);
         for (int iseg = 0; iseg < network.getNseg(); iseg++) {
-            if (segname(jseg) == network.edgeLabels(iseg)) {
+            if (tname == network.edgeLabels(iseg)) {
                 nodtyp(network.ista(iseg)) += 1;
                 nodtyp(network.iend(iseg)) += 1;
             }
@@ -79,7 +81,7 @@ void spatGraph::generate(Network &network, bool print)  {
             segnodname(1, jseg) = network.nodname(idx(0));
         }
         else {
-            printText("Loop detected for edge "+to_string(segname(jseg)),5);
+            printText("Loop detected for edge "+to_string(tname),5);
             idx = find(nodtyp > 0);
             for (int inod = 0; inod < (int) idx.n_elem; inod++)    {
                 if (nodtyp(idx(inod)) != network.nodtyp(idx(inod))) {

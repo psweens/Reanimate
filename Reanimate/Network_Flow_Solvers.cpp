@@ -7,15 +7,17 @@ void Network::fullSolver()    {
 
     // Construct conductance matrix, M
     if (!phaseseparation)   {printText("Computing conductance matrix, M",2, 0);}
-    double tcond{},sum{},bn{};
+    double tcond{};
     if (cuboidVessels)  {
-        double a{},b{};
+        double a{},b{},sum{},bn{};
+        width *= 1.e-3;
+        height *= 1.e-3;
         // Let 'b' (z-axis) be vessel depth and 'a' (y-axis) width
         for (int iseg = 0; iseg < nseg; iseg++) {
             sum = 0.;
-            a = diam(iseg);
-            b = diam(iseg);
-            for (int n = 0; n < 1e2; n++)   {
+            a = width(iseg);
+            b = height(iseg);
+            for (int n = 0; n < 5; n++)   {
                 bn = (2.*n - 1.) * M_PI / a;
                 sum += (1. / pow(2.*n - 1.,5)) * (cosh(bn * b) - 1.) / sinh(bn * b);
             }
@@ -23,6 +25,8 @@ void Network::fullSolver()    {
             M(iseg,ista(iseg)) = tcond;
             M(iseg,iend(iseg)) = -tcond;
         }
+        width *= 1.e3;
+        height *= 1.e3;
     }
     else {
         for (int iseg = 0; iseg < nseg; iseg++) {
@@ -65,7 +69,8 @@ void Network::fullSolver()    {
     if (!phaseseparation)   {printText("Solving linear system",2, 0);}
     nodpress = spsolve(K,Qo, "superlu", settings)/alpha;
     q = (M * nodpress)*(alpha/gamma);
-    tau = c % abs(q) * (gamma/beta);
+    if (cuboidVessels)  {cuboidWSS();}
+    else {tau = c % abs(q) * (gamma/beta);}
 
 }
 

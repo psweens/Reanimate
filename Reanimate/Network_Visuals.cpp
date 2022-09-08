@@ -73,7 +73,8 @@ void Network::pictureNetwork(const string &filename, vec vector, bool logdist, i
     vmin = vector.min();
     vmax = vector.max();
     for(int i = 0; i < (int) vector.n_elem; i++)  {
-        plot = (vector(i) - vmin)/(vmax-vmin);
+        if (vmax != vmin)   {plot = (vector(i) - vmin)/(vmax-vmin);}
+        else {plot = vector(i) - vmin;}
         blue = min(max(1.5-4*abs(plot-0.25),0.),1.);
         green = min(max(1.5-4*abs(plot-0.5),0.),1.);
         red = min(max(1.5-4*abs(plot-0.75),0.),1.);
@@ -184,7 +185,6 @@ void Network::plotContour(const string filename, Network &graph, double maxval, 
     //xsl2(2) = 0.5 * max(graph.cnode.row(2));
 
     int nlmax = 1;
-    double pint = (maxval - minval) / NL;
     if (NL > nlmax) {nlmax = NL;}
 
     vec cl = zeros<vec>(nlmax+1);
@@ -200,31 +200,23 @@ void Network::plotContour(const string filename, Network &graph, double maxval, 
     for(isl1 = 1; isl1 <= xgrid; isl1++) {
         for(isl2 = 1; isl2 <= ygrid; isl2++){
             for(int i = 0; i < 3; i++) {x(i) = xsl0(i) + (isl1-1)*(xsl1(i)-xsl0(i))/(xgrid-1) + (isl2-1)*(xsl2(i)-xsl0(i))/(ygrid-1);}
-            if (vector) {p = evalTissVel(x);}
+            if (vector) {p = (evalTissVel(x));}
             else {p = evalTissPress(x);}
-            if (p > maxval)    {
-                if (vector) {
-                    maxval = p;
-                    pint = (maxval - minval) / NL;
-                }
-                else {
-                    printText("Max. continuum pressure breached in contour plotter: "+to_string(p)+" mmHg",5);
-                    p = maxval;
-                }
-            }
-            else if (p < minval)    {
-                if (vector) {
-                    minval = p;
-                    pint = (maxval - minval) / NL;
-                }
-                else {
-                    printText("Min. continuum pressure breached in contour plotter: "+to_string(p)+" mmHg",5);
-                    p = minval;
-                }
-            }
             zv(isl1-1,isl2-1) = p;
         }
     }
+
+    if (maxval == 0. && minval == 0.)   {
+        maxval = zv.max();
+        minval = zv.min();
+    }
+    else {
+        zv(find(zv > maxval)).fill(maxval);
+        zv(find(zv < minval)).fill(minval);
+    }
+    double pint = (maxval - minval) / NL;
+    printNum("Max. contour value =", maxval);
+    printNum("Min. contour value =", minval);
 
     ofp = fopen(file.c_str(), "w");
     fprintf(ofp, "%%!PS-Adobe-2.0\n");

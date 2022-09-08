@@ -24,17 +24,27 @@ void DiscreteContinuum::computeDiscrete()  {
     qout_act = zeros<vec>(nnodT);
     pout_act = zeros<vec>(nnodT);
     Pa_Pv = zeros<vec>(nnodT);
+    sourceGeoTyp = zeros<ivec>(nnodT);
     for (int i = 0; i < (int) sourceIdx.n_elem; i++)    {
         qout_act(i) = discreteNet.BCflow(sourceIdx(i));
         pout_act(i) = discreteNet.BCpress(sourceIdx(i));
         for (int jnodbc = 0; jnodbc < discreteNet.getNnodbc(); jnodbc++) {
             if (sourceBCtyp(jnodbc) == -1 && sourceTree(sourceIdx(i)) == sourceTree(jnodbc))  {
                 Pa_Pv(i) = discreteNet.BCpress(jnodbc);
+                if (Pa_Pv(i) < pout_act(i) && discreteNet.BCgeo(jnodbc) == 1)  {
+                    printText("Arteriolar branch : base pressure > 1", 4);
+                }
+                else if (Pa_Pv(i) > pout_act(i) && discreteNet.BCgeo(jnodbc) == 3)    {
+                    printText("Venular branch : base pressure < 1", 4);
+                }
                 jnodbc = discreteNet.getNnodbc();
             }
         }
+        sourceGeoTyp(i) = discreteNet.BCgeo(sourceIdx(i));
     }
+    if (any(sourceGeoTyp == 2)) {printText("Source classified as capillary",4);}
 
+    double inflow = accu(discreteNet.BCflow(find(discreteNet.BCflow > 0.)));
 
     // No flow even at terminal branches in full network
     for (int inodbc = 0; inodbc < discreteNet.getNnodbc(); inodbc++) {
@@ -44,14 +54,13 @@ void DiscreteContinuum::computeDiscrete()  {
         }
         else if (sourceBCtyp(inodbc) == -2) {
             discreteNet.bctyp(inodbc) = 1;
-            discreteNet.bcprfl(inodbc) = 0.;
+            discreteNet.bcprfl(inodbc) = 0.;//discreteNet.BCflow(inodbc);
         }
         else    {
             discreteNet.bctyp(inodbc) = 1;
             discreteNet.bcprfl(inodbc) = 0.;
         }
     }
-
 
     // Populate Mnet matrix - sequential solver
     discreteNet.varviscosity = true;
@@ -67,10 +76,13 @@ void DiscreteContinuum::computeDiscrete()  {
     discreteNet.rheolParams();
     discreteNet.printNetwork("Branch_Network.txt");
     discreteNet.scaleNetwork(1.e-3);
-    int n{};
     for (int i = 0; i < nnodT; i++)    {
 
-        discreteNet.bcprfl(sourceIdx(i)) = discreteNet.BCflow(sourceIdx(i)) / abs(discreteNet.BCflow(sourceIdx(i)));
+        if (Pa_Pv(i) - storeBCpress(sourceIdx(i)) > 0.) {discreteNet.bcprfl(sourceIdx(i)) = -1.;}
+        else {discreteNet.bcprfl(sourceIdx(i)) = 1.;}
+
+        /*if (discreteNet.BCgeo(sourceIdx(i)) == 1)   {discreteNet.bcprfl(sourceIdx(i)) = -1.;}
+        else if (discreteNet.BCgeo(sourceIdx(i)) == 3)   {discreteNet.bcprfl(sourceIdx(i)) = 1.;}*/
         discreteNet.bctyp(sourceIdx(i)) = 1;
 
         for (int j = 0; j < nnodT; j++)    {
@@ -80,38 +92,19 @@ void DiscreteContinuum::computeDiscrete()  {
             }
         }
 
-        if (discreteNet.BCgeo(sourceIdx(i)) == 1) {
-            n = 0;
-            discreteNet.bcprfl(sourceIdx(i)) = -1.;
-            if (discreteNet.bcprfl(sourceIdx(i)) == 1.)  {n = 1;}
-        }
-        else if (discreteNet.BCgeo(sourceIdx(i)) == 3)    {
-            n = 1;
-            discreteNet.bcprfl(sourceIdx(i)) = 1.;
-            if (discreteNet.bcprfl(sourceIdx(i)) == -1.)  {n = 0;}
-        }
-
         discreteNet.setup_flowArrays();
         discreteNet.splitHD(&Network::fullSolver, graph);
         for (int inodbc = 0; inodbc < discreteNet.getNnodbc(); inodbc++)    {
             discreteNet.BCpress(inodbc) = discreteNet.nodpress(discreteNet.bcnod(inodbc));
         }
 
-        Mnet.col(i) = pow(-1.,n)*(Pa_Pv(i) - discreteNet.BCpress(sourceIdx));
+        for (int j = 0; j < nnodT; j++)     {Mnet(i,j) = abs(Pa_Pv(j) - discreteNet.BCpress(sourceIdx(j)));}
 
         discreteNet.bcprfl = storeBC;
         discreteNet.bctyp = storeBCtyp;
         discreteNet.BCflow = storeBCflow;
         discreteNet.BCpress = storeBCpress;
 
-    }
-
-    for (int i = 0; i < nnodT; i++)    {
-        for (int j = 0; j < nnodT; j++)    {
-            if (sourceTree(sourceIdx(i)) != sourceTree(sourceIdx(j)))   {
-                Mnet(i,j) = 0.;
-            }
-        }
     }
 
     Mnet *= (alpha/gamma); // mmHg / nl/min -> Kg / mm4 s

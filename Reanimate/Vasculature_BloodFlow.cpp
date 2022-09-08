@@ -21,7 +21,7 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
 
     if (loadDeadEnds)   {
         printText("Reading dead ends");
-        deadEnds.save(string(buildPath+"Network_DeadEnds.txt"), raw_ascii);
+        deadEnds.load(string(buildPath+"Network_DeadEnds.txt"), raw_ascii);
     }
     else {
         deadEnds = networkCopy.findDeadends();
@@ -70,6 +70,7 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
 
     // Analyse flow
     analyseVascularFlow();
+    printNetwork("SolvedBloodFlow.txt");
 
 }
 
@@ -82,7 +83,7 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
     // effects (see work of R.L. Carr et al.).
     double relax = 1., maxqerr{}, maxhderr{};
 
-    if (!phaseseparation)   {nitmax = 1;}
+    if (!phaseseparation)   {nitmax = 1e2;}
 
     bool converged = false;
     ivec noflowOld = zeros<ivec>(nseg);
@@ -100,7 +101,6 @@ void Vasculature::splitHD(Call solver, spatGraph &hdGraph) {
             computeConductance();
         }
         else {computeConductance();}
-
 
         // Flow solver
         (this->*solver)();

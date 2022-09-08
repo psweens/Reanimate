@@ -58,7 +58,7 @@ void Network::doubleDfs(int v, int tag, double val, ivec &track, vec &param, str
 
 }
 
-void Network::dfsBranch(int v, int tag, ivec &track, int maxBranch)  {
+void Network::dfsBranch(int v, int tag, ivec &track, int maxBranch, double minDiam)  {
 
     int to{};
     int n = nodtyp(v);
@@ -67,8 +67,8 @@ void Network::dfsBranch(int v, int tag, ivec &track, int maxBranch)  {
         track(v) = tag;
         for (int i = 0; i < n; i++)    {
             to = nodnod(i, v);
-            if (abs(diam(nodseg(i, v))) > 9.)  {
-                if (track(to) == -1)   {dfsBranch(to, tag, track, maxBranch);}
+            if (abs(diam(nodseg(i, v))) > minDiam)  {
+                if (track(to) == -1)   {dfsBranch(to, tag, track, maxBranch, minDiam);}
             }
         }
     }
@@ -195,6 +195,7 @@ ivec Network::breadthFirstSearch(int nod)  {
             }
         }
     }
+    printText("Done",2, 0);
 
     return order;
 

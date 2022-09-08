@@ -11,17 +11,13 @@ using namespace std;
 void example_Discrete_BloodFlow() {
 
     // Set number of threads for any multithreading
-    omp_set_num_threads(48);
+    //omp_set_num_threads(48);
 
     // Define vasculature
     Vasculature network;
-
-    // Set load and built paths
-    network.loadPath = "/Users/paul/Dropbox/Code/C++/Reanimate/Load_Data/";
-    network.buildPath = "/Users/paul/Dropbox/Code/C++/Reanimate/Build_Data/";
-
-    // Func. creates build path if non-existent (files deleted if folder exists)
-    network.setBuildPath(true);
+    // Define and set load / build paths
+    network.setLoadPath("/Users/paul/Dropbox/Code/C++/Reanimate/Load_Data/");
+    network.setBuildPath("/Users/paul/Dropbox/Code/C++/Reanimate/Build_Data/",true);
 
     // Load network file
     network.loadNetwork("1Network.dat");

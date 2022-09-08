@@ -33,14 +33,8 @@ void Vasculature::rheolParams()  {
     viscpar(4) = -0.06;
     viscpar(5) = 0.645;
 
-    // Constant visc
-    constvisc = 3.;
-
     // Plasma viscosity (cP)
     vplas = 1.0466;
-
-    // Constant hematocrit
-    consthd = 0.4;
 
     // Mean cell vol.
     mcv = 55.;
