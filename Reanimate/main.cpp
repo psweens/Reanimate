@@ -21,7 +21,8 @@ int main(int argc, char** argv) {
     // Tumour haematocrit simulations
     //tumour_PhaseSeparation();
 
+    example_Discrete_BloodFlow();
     //example_Hybrid_BloodFlow();
-    Medulla();
+    //Medulla();
 
 }

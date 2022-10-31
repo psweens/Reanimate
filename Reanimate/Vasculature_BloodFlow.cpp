@@ -35,13 +35,14 @@ void Vasculature::bloodFlow(bool varViscosity, bool phaseSeparation, bool memory
 
 
     spatGraph hdGraph;
-    hdGraph.generate(networkCopy, true); // Diameter / length dimensions are in microns (taken from edge data)
-    npoint = networkCopy.npoint;
-    if (any(hdGraph.nodtyp == 2) && memoryeffects)   {
-        printText( "Type 2 vertex detected. Amending ...",1,0);
-        hdGraph.linkEdges();
+    if (phaseSeparation) {
+        hdGraph.generate(networkCopy, true, graphOverride); // Diameter / length dimensions are in microns (taken from edge data)
+        npoint = networkCopy.npoint;
+        if (any(hdGraph.nodtyp == 2) && memoryeffects)   {
+            printText( "Type 2 vertex detected. Amending ...",1,0);
+            hdGraph.linkEdges();
+        }
     }
-
 
     // Millimetre scaling for copied network
     networkCopy.diam *= 1e-3;

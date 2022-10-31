@@ -67,6 +67,7 @@ Network::Network() {
     unknownBCs = false;
     silence = false;
     cuboidVessels = false;
+    graphOverride = true;
 
     progressBar.set_todo_char(" ");
     progressBar.set_done_char("█");
@@ -179,7 +180,15 @@ void Network::loadNetwork(const string &filename, const bool cuboidVess, const b
 
     setup_networkArrays();
     analyse_network();
-    edgeNetwork();
+    if (graphOverride) {
+        npoint = nnod;
+        edgeLabels = segname;
+        ediam = diam;
+        elseg = lseg;
+        if (any(nodtyp == 2))   {printText("Spatial graph override initiated but node type 2 detected",5);}
+    }
+    else {edgeNetwork();}
+
     printNetwork("loadedNetworkFile.txt");
 
     if (num == 5)   {

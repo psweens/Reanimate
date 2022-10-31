@@ -37,25 +37,25 @@ void Vasculature::analyseVascularFlow()  {
     uvec kdx = find(vesstyp == 3);
     
     printText("Blood pressure = "+to_string(mean(segpress))+" ± "+to_string(stddev(segpress))+" mmHg", 1, 0);
-    if (max(vesstyp) == 3)  {
+    if (min(vesstyp) == 1 && max(vesstyp) == 3)  {
         printText("Arteriole pressure = "+to_string(mean(segpress(idx)))+" ± "+to_string(stddev(segpress(idx)))+" mmHg", 1, 0);
         printText("Capillary pressure = "+to_string(mean(segpress(jdx)))+" ± "+to_string(stddev(segpress(jdx)))+" mmHg", 1, 0);
         printText("Venule pressure = "+to_string(mean(segpress(kdx)))+" ± "+to_string(stddev(segpress(kdx)))+" mmHg",1, 0);
     }
     printText("Blood flow = "+to_string(mean(qq))+" ± "+to_string(stddev(qq))+" nl/min",1, 0);
-    if (max(vesstyp) == 3)  {
+    if (min(vesstyp) == 1 && max(vesstyp) == 3)  {
         printText("Arteriole flow = "+to_string(mean(qq(idx)))+" ± "+to_string(stddev(qq(idx)))+" nl/min",1, 0);
         printText("Capillary flow = "+to_string(mean(qq(jdx)))+" ± "+to_string(stddev(qq(jdx)))+" nl/min",1, 0);
         printText("Venule flow = "+to_string(mean(qq(kdx)))+" ± "+to_string(stddev(qq(kdx)))+" nl/min",1, 0);
     }
     printText("Blood velocity = "+to_string(mean(vel))+" ± "+to_string(stddev(vel))+" mm/s",1, 0);
-    if (max(vesstyp) == 3)  {
+    if (min(vesstyp) == 1 && max(vesstyp) == 3)  {
         printText("Arteriole velocity = "+to_string(mean(vel(idx)))+" ± "+to_string(stddev(vel(idx)))+" mm/s",1, 0);
         printText("Capillary velocity = "+to_string(mean(vel(jdx)))+" ± "+to_string(stddev(vel(jdx)))+" mm/s",1, 0);
         printText("Venule velocity = "+to_string(mean(vel(kdx)))+" ± "+to_string(stddev(vel(kdx)))+" mm/s",1, 0);
     }
     printText("Vessel Wall Shear Stress = "+to_string(mean(tau))+" ± "+to_string(stddev(tau))+" dyn/cm2",1, 0);
-    if (max(vesstyp) == 3)  {
+    if (min(vesstyp) == 1 && max(vesstyp) == 3)  {
         printText("Arteriole WSS = "+to_string(mean(tau(idx)))+" ± "+to_string(stddev(tau(idx)))+" dyn/cm2",1, 0);
         printText("Capillary WSS = "+to_string(mean(tau(jdx)))+" ± "+to_string(stddev(tau(jdx)))+" dyn/cm2",1, 0);
         printText("Venule WSS = "+to_string(mean(tau(kdx)))+" ± "+to_string(stddev(tau(kdx)))+" dyn/cm2",1, 0);

@@ -41,7 +41,7 @@ void spatGraph::setup_graphArrays() {
 
 
 //template <class CallNetwork>
-void spatGraph::generate(Network &network, bool print)  {
+void spatGraph::generate(Network &network, bool print, bool spatGraphOverride)  {
 
     buildPath = network.buildPath;
     loadPath = network.loadPath;
@@ -61,53 +61,63 @@ void spatGraph::generate(Network &network, bool print)  {
 
 
     // Finding edge vertices
-    int tname{};
-    uvec idx;
-    ivec flagLoop = zeros<ivec>(nseg);
-    segnodname = zeros<imat>(2,nseg);
-    ngraphTag = zeros<ivec>(nnod);
-    for (int jseg = 0; jseg < nseg; jseg++) {
-        nodtyp.zeros();
-        tname = segname(jseg);
-        for (int iseg = 0; iseg < network.getNseg(); iseg++) {
-            if (tname == network.edgeLabels(iseg)) {
-                nodtyp(network.ista(iseg)) += 1;
-                nodtyp(network.iend(iseg)) += 1;
+    if (!spatGraphOverride) {
+        int tname{};
+        uvec idx;
+        ivec flagLoop = zeros<ivec>(nseg);
+        segnodname = zeros<imat>(2,nseg);
+        ngraphTag = zeros<ivec>(nnod);
+        for (int jseg = 0; jseg < nseg; jseg++) {
+            nodtyp.zeros();
+            tname = segname(jseg);
+            for (int iseg = 0; iseg < network.getNseg(); iseg++) {
+                if (tname == network.edgeLabels(iseg)) {
+                    nodtyp(network.ista(iseg)) += 1;
+                    nodtyp(network.iend(iseg)) += 1;
+                }
             }
-        }
-        if (min(nodtyp(find(nodtyp))) == 1)   {
-            idx = find(nodtyp == 1);
-            segnodname(0, jseg) = network.nodname(idx(1));
-            segnodname(1, jseg) = network.nodname(idx(0));
-        }
-        else {
-            printText("Loop detected for edge "+to_string(tname),5);
-            idx = find(nodtyp > 0);
-            for (int inod = 0; inod < (int) idx.n_elem; inod++)    {
-                if (nodtyp(idx(inod)) != network.nodtyp(idx(inod))) {
-                    segnodname(0, jseg) = network.nodname(idx(inod));
-                    segnodname(1, jseg) = network.nodname(idx(inod));
+            if (min(nodtyp(find(nodtyp))) == 1)   {
+                idx = find(nodtyp == 1);
+                segnodname(0, jseg) = network.nodname(idx(1));
+                segnodname(1, jseg) = network.nodname(idx(0));
+            }
+            else {
+                printText("Loop detected for edge "+to_string(tname),5);
+                idx = find(nodtyp > 0);
+                for (int inod = 0; inod < (int) idx.n_elem; inod++)    {
+                    if (nodtyp(idx(inod)) != network.nodtyp(idx(inod))) {
+                        segnodname(0, jseg) = network.nodname(idx(inod));
+                        segnodname(1, jseg) = network.nodname(idx(inod));
+                    }
                 }
             }
         }
+
+
     }
 
 
     // List nodes & coordinates
     ivec nodIdx = unique(segnodname);
-    nnod = nodIdx.n_elem;
-    nodname = zeros<ivec>(nnod);
-    cnode = zeros<mat>(3,nnod);
-    for (int inod = 0; inod < nnod; inod++) {
-        for (int jnod = 0; jnod < (int) network.nodname.n_elem; jnod++) {
-            if (nodIdx(inod) == network.nodname(jnod))  {
-                nodname(inod) = network.nodname(jnod);
-                cnode.col(inod) = network.cnode.col(jnod);
-                jnod = network.nodname.n_elem;
+    if (spatGraphOverride)  {
+        nnod = network.getNnod();
+        nodname = network.nodname;
+        cnode = network.cnode;
+    }
+    else    {
+        nnod = nodIdx.n_elem;
+        nodname = zeros<ivec>(nnod);
+        cnode = zeros<mat>(3,nnod);
+        for (int inod = 0; inod < nnod; inod++) {
+            for (int jnod = 0; jnod < (int) network.nodname.n_elem; jnod++) {
+                if (nodIdx(inod) == network.nodname(jnod))  {
+                    nodname(inod) = network.nodname(jnod);
+                    cnode.col(inod) = network.cnode.col(jnod);
+                    jnod = network.nodname.n_elem;
+                }
             }
         }
     }
-
 
     bcnodname = network.bcnodname;
     bctyp = network.bctyp;
@@ -116,9 +126,16 @@ void spatGraph::generate(Network &network, bool print)  {
     nnodbc = bcnodname.n_elem;
 
     nodsegm = network.nodsegm;
-    ista = zeros<ivec>(nseg);
-    iend = zeros<ivec>(nseg);
-    indexSegmentConnectivity();
+    if (spatGraphOverride)  {
+        ista = network.ista;
+        iend = network.iend;
+        segnodname = network.segnodname;
+    }
+    else {
+        ista = zeros<ivec>(nseg);
+        iend = zeros<ivec>(nseg);
+        indexSegmentConnectivity();
+    }
 
     alx = network.alx;
     aly = network.aly;
@@ -132,27 +149,30 @@ void spatGraph::generate(Network &network, bool print)  {
 
     setup_graphArrays();
     setup_networkArrays();
-    analyse_network(true, print);
+    if (spatGraphOverride)  {analyse_network();}
+    else    {analyse_network(true, print);}
     printNetwork("spatialGraph.txt");
 
-    int cntr = 0;
-    for (int inodbc = 0; inodbc < network.getNnodbc(); inodbc++)    {
-        if (network.bcprfl(inodbc) == 0.0 && network.bctyp(inodbc) == 1)    {
-            cntr += 1;
+    if (!spatGraphOverride) {
+        int cntr = 0;
+        for (int inodbc = 0; inodbc < network.getNnodbc(); inodbc++)    {
+            if (network.bcprfl(inodbc) == 0.0 && network.bctyp(inodbc) == 1)    {
+                cntr += 1;
+            }
         }
-    }
-    cntr -= network.getNnodbc();
-    if (nnodbc != abs(cntr)) {printText("Incorrect number of boundary nodes. Target no. = "+to_string(abs(cntr)),5);}
-    for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
-        uvec idx = find(bcnodname(inodbc) == network.bcnodname);
-        if (idx.n_elem == 0)    {printText("New boundary node detected",5);}
-    }
+        cntr -= network.getNnodbc();
+        if (nnodbc != abs(cntr)) {printText("Incorrect number of boundary nodes. Target no. = "+to_string(abs(cntr)),5);}
+        for (int inodbc = 0; inodbc < nnodbc; inodbc++) {
+            uvec idx = find(bcnodname(inodbc) == network.bcnodname);
+            if (idx.n_elem == 0)    {printText("New boundary node detected",5);}
+        }
 
-    for (int iseg = 0; iseg < nseg; iseg++) {
-        int inod1 = (int) ista(iseg);
-        int inod2 = (int) iend(iseg);
-        segnod(inod1,inod2) = iseg;
-        segnod(inod2,inod1) = iseg;
+        for (int iseg = 0; iseg < nseg; iseg++) {
+            int inod1 = (int) ista(iseg);
+            int inod2 = (int) iend(iseg);
+            segnod(inod1,inod2) = iseg;
+            segnod(inod2,inod1) = iseg;
+        }
     }
 
     // Find and store vertex indices in full network

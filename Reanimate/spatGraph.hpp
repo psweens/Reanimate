@@ -17,7 +17,7 @@ namespace reanimate {
         double Dr{},Dmin{};
         ivec vesselGeometry,isBridge,isBridgehead,flagTree;
         imat InOutlets,segvert;
-        void generate(Network &network, bool print=false);
+        void generate(Network &network, bool print=false, bool spatGraphOverride=false);
         void indexVertices(Network &network);
         void indexPoints(Network &network);
         void defineTrunk();
