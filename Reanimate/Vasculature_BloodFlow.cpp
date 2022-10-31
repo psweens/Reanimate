@@ -199,6 +199,10 @@ void Vasculature::iterateFlowDir(spatGraph &hdGraph)   {
         double newK = mean(tau % tau) / pow(mean(tau),2);
         tau0 = targStress * newK * flowsign;
 
+        // Rough estimation of tissue perfusion - IMPROVE - below too
+        computeBoundaryFlow();
+        tissperfusion = accu(find(BCflow > 0.)) / (alx * aly * alz * tissDensity) * 1e6; // ml/min/100g
+
         // Count flow reversal
         int nflowreversal = (int) accu(abs(flowsign(find(flowsign != oldFlowsign))));
         printText( "Total reversed flow = "+to_string(nflowreversal)+", ktau/kp = "+to_string(ktau/kp)+", tissue perfusion = "+to_string(tissperfusion)+" ml/min/100g",1,0);
@@ -210,7 +214,6 @@ void Vasculature::iterateFlowDir(spatGraph &hdGraph)   {
         if (ktau / kp > 1 && nflowreversal == 0 && nodpress.min() > 0.0) {
 
             stableflow = true;
-            tissperfusion = 0.;
             inflow = 0.;
             ktau  = oldktau;
             tau = abs(oldTau) / beta;
@@ -223,6 +226,7 @@ void Vasculature::iterateFlowDir(spatGraph &hdGraph)   {
 
             computeSegpress();
             computeBoundaryFlow();
+            tissperfusion = accu(find(BCflow > 0.)) / (alx * aly * alz * tissDensity) * 1e6; // ml/min/100g
 
         }
         else {

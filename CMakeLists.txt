@@ -56,4 +56,6 @@ add_executable(Reanimate
         Reanimate/Examples/Example_Hybrid_BloodFlow.cpp
         Reanimate/Examples/Examples.h
         Reanimate/Medulla.cpp
-        Reanimate/Misc/progressBar.hpp)
+        Reanimate/Misc/progressBar.hpp 
+		Reanimate/Examples/Example_MicroFluidic_BloodFlow.cpp
+        Reanimate/Examples/Example_BranchingOrder.cpp)
