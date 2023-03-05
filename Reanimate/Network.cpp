@@ -89,6 +89,8 @@ void Network::loadNetwork(const string &filename, const bool cuboidVess, const b
     else {networkPath = buildPath + filename;}
     initLog(); // Initialise log
 
+    printf("Reading %s ...\n", networkPath.c_str());
+
     FILE *ifp;
     ifp = fopen(networkPath.c_str(),"r");
 
@@ -137,7 +139,7 @@ void Network::loadNetwork(const string &filename, const bool cuboidVess, const b
         }
     }
     else    {
-        printText("Network file -> Invalid Node Format",4);
+        printText("Network file -> Invalid Node Format "+ to_string(int(num)),4);
     }
 
     // Boundary nodes
@@ -151,6 +153,8 @@ void Network::loadNetwork(const string &filename, const bool cuboidVess, const b
     bchd = zeros<vec>(nnodbc);
 
     nsol = detect_col(ifp);
+    printText("nsol = " + to_string(int(nsol)) , 1, 0);
+    printText("nnodbc = " + to_string(int(nnodbc)) , 1, 0);
     if (nsol == 4)   {
         for(int inodbc = 0; inodbc < nnodbc; inodbc++){
             fscanf(ifp,"%lli %lli %lf %lf\n", &bcnodname(inodbc),&bctyp(inodbc),&bcprfl(inodbc),&bchd(inodbc));
@@ -247,7 +251,7 @@ void Network::loadSegments(FILE *ifp, const bool cuboidVess)    {
                        &segname(iseg),&vesstyp(iseg),&segnodname(0,iseg),&segnodname(1,iseg),&diam(iseg),&lseg(iseg),&q(iseg),&hd(iseg));
             }
         }
-        else    {printText("Network File -> Invalid Segment Format",4);}
+        else    {printText("Network File -> Invalid Segment Format "+ to_string(int(num)),4);}
     }
     qq = abs(q);
 

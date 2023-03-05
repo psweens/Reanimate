@@ -5,7 +5,7 @@
 #ifndef REANIMATE_EXAMPLES_H
 #define REANIMATE_EXAMPLES_H
 
-extern void example_Discrete_BloodFlow();
+extern void example_Discrete_BloodFlow(std::string file_path, std::string build_path);
 extern void example_Hybrid_BloodFlow();
 extern void example_MicroFluidic_BloodFlow();
 extern void example_BranchingOrder();
