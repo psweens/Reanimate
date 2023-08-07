@@ -13,16 +13,19 @@ using namespace std;
 int main(int argc, char** argv) {
 
     std::string file_path;
+    std::string file_name;
     std::string build_path;
     if (argc >= 2) {
         file_path = argv[1];
-        build_path = argv[2];
-        example_Discrete_BloodFlow(file_path,build_path);
+        file_name = argv[2];
+        build_path = argv[3];
+        example_Discrete_BloodFlow(file_path,file_name,build_path);
     }
     else {
         file_path = "/mnt/data2/retinasim/cco/graph/";
+        file_name = "retina_cco.dat";
         build_path = "/mnt/ml/anaconda_envs/vessel_growth_38/lib/python3.8/site-packages/Reanimate/Build_Data/";
-        example_Discrete_BloodFlow(file_path,build_path);
+        example_Discrete_BloodFlow(file_path,file_name,build_path);
     }
 
     // Finding tumour redundancy

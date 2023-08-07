@@ -10,7 +10,7 @@
 using namespace reanimate;
 using namespace std;
 
-void example_Discrete_BloodFlow(std::string file_path, std::string build_path) {
+void example_Discrete_BloodFlow(std::string file_path, std::string file_name, std::string build_path) {
 
     // Set number of threads for any multithreading
     //omp_set_num_threads(48);
@@ -25,7 +25,7 @@ void example_Discrete_BloodFlow(std::string file_path, std::string build_path) {
     // Load network file
     printf("> Loading network...\n");
     network.graphOverride = false;
-    network.loadNetwork("retina_cco.dat");
+    network.loadNetwork(file_name);
 
     // Set stack size - used for functions w/ recursive loops (large networks)
     printf("> Setting stack size ...\n");
