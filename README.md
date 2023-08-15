@@ -10,7 +10,7 @@ Reanimate implements several mathematical models in research literature includin
 * [Empirical phase separation law](https://www.ahajournals.org/doi/10.1161/01.res.67.4.826?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%20%200pubmed) to calculate the disproportion distribution of haematocrit at microvascular bifurcations.
 * [Numerical update to phase separation law](https://www.pnas.org/content/117/45/27811) which accounts for cell-free layer disruption and recovery.
 * [Blood flow estimation model](https://onlinelibrary.wiley.com/doi/10.1111/j.1549-8719.2012.00184.x) to simulate blood flow in a microvascular network with incomplete boundary conditions.
-* [Interstitial flow model](https://journals.plos.org/ploscompbiol/article/comments?id=10.1371/journal.pcbi.1006751) which uses a Green's function method to simulate transvascular fluid transport.
+* [Interstitial flow model](https://journals.plos.org/ploscompbiol/article/comments?id=10.1371/journal.pcbi.1006751) which uses a Green's function method to simulate transvascular fluid transport ***(TO BE IMPLEMENTED)***.
 
 The Reanimate C++ library is the 2nd generation, user-friendly version of the [code](https://zenodo.org/record/1414160#.YXbN7y1Q1bV) which forms the basis of the REANIMATE (**Rea**listic **N**umerical **I**mage-based **M**odelling of Biologic**a**l **T**issue Substrat**e**s) framework published [here](http://www.nature.com/articles/s41551-018-0306-y) and corresponding mathematical methods [here](https://journals.plos.org/ploscompbiol/article/comments?id=10.1371/journal.pcbi.1006751).
 
